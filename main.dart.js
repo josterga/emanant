@@ -61249,13 +61249,13 @@ return A.mu(A.a([s.ul(a,"Track","Capture your ideas, experiences, and important 
 ul(a,b,c,d,e,f){var s=null,r=A.c7(a,s,t.w).w,q=A.ML(8),p=t.p
 return A.Qy(s,A.pN(s,A.a5X(A.a([new A.kS(d,48,s,s),B.Hc,new A.zR(1,B.k1,A.mu(A.a([A.XD(b,B.Jm,s),A.XD(c,B.Jw,s)],p),B.bW,B.b_),s),B.zT],p),B.c0,B.b_),s,new A.fT(e,s,s,q,s,s,B.bR),s,s,B.cC,r.a.a*0.75),B.b9,!1,s,s,s,s,s,s,s,s,s,s,s,s,s,s,f,s,s,s)}}
 A.PC.prototype={
-$0(){return this.a.jy("https://josterga.github.io/tasklist/")},
+$0(){return this.a.jy("https://track.emanant.app")},
 $S:0}
 A.PD.prototype={
-$0(){return this.a.jy("https://josterga.github.io/pomodoro/")},
+$0(){return this.a.jy("https://focus.emanant.app")},
 $S:0}
 A.PE.prototype={
-$0(){return this.a.jy("https://josterga.github.io/balancesheet/")},
+$0(){return this.a.jy("https://balance.emanant.app")},
 $S:0}
 A.xQ.prototype={
 P(a){var s=this,r=null,q=A.c7(a,r,t.w).w,p=A.ML(8)
