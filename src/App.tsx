@@ -48,7 +48,8 @@ export default function App() {
     mapRef.current = map
 
     map.on('error', (e) => {
-      if (e.error?.status === 401 || e.error?.message?.toLowerCase().includes('unauthorized')) {
+      const err = e.error as Error & { status?: number }
+      if (err?.status === 401 || err?.message?.toLowerCase().includes('unauthorized')) {
         setMapError('Map failed to load — token may be invalid or domain-restricted.')
       }
     })
