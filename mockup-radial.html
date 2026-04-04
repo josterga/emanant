@@ -1,0 +1,442 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>radial-route — Radial View</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a14;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 20px;
+    }
+    .label {
+      color: rgba(255,255,255,0.3);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 600;
+    }
+    .phone-frame {
+      width: 390px;
+      height: 844px;
+      position: relative;
+      overflow: hidden;
+      background: #141425;
+      border-radius: 48px;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 40px 80px rgba(0,0,0,0.8);
+    }
+    /* Status bar */
+    .status-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50px;
+      z-index: 30;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 28px 8px;
+      background: linear-gradient(to bottom, rgba(20,20,37,0.95) 0%, transparent 100%);
+    }
+    .status-time { font-size: 15px; font-weight: 700; color: white; }
+    .status-icons { display: flex; align-items: center; gap: 5px; color: white; font-size: 13px; }
+    /* Search pill */
+    .search-pill {
+      position: absolute;
+      top: 60px; left: 16px; right: 16px;
+      z-index: 20;
+      background: rgba(22,22,42,0.94);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 11px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .search-icon { font-size: 18px; }
+    .search-text { color: rgba(255,255,255,0.9); font-size: 15px; font-weight: 500; flex: 1; }
+    .search-badge {
+      background: rgba(255,107,53,0.18);
+      border: 1px solid rgba(255,107,53,0.35);
+      border-radius: 10px;
+      padding: 3px 9px;
+      font-size: 12px;
+      color: #FF6B35;
+      font-weight: 700;
+    }
+    /* Location FAB */
+    .location-fab {
+      position: absolute;
+      bottom: 220px; right: 16px;
+      width: 46px; height: 46px;
+      background: rgba(22,22,42,0.94);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      font-size: 22px;
+      color: rgba(255,255,255,0.7);
+    }
+    /* Bottom sheet */
+    .bottom-sheet {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(18,18,35,0.98);
+      backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      z-index: 25;
+      padding: 14px 20px 38px;
+    }
+    .drag-handle {
+      width: 38px; height: 4px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+    .sheet-top-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .budget-block {}
+    .budget-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 3px;
+    }
+    .budget-value {
+      font-size: 36px;
+      font-weight: 800;
+      color: white;
+      line-height: 1;
+    }
+    .budget-unit {
+      font-size: 16px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.45);
+      margin-left: 2px;
+    }
+    .profile-pills {
+      display: flex;
+      gap: 6px;
+      padding-top: 4px;
+    }
+    .pill {
+      padding: 7px 13px;
+      border-radius: 22px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.35);
+      background: transparent;
+      cursor: pointer;
+    }
+    .pill.active {
+      background: #FF6B35;
+      border-color: #FF6B35;
+      color: white;
+    }
+    .slider-wrap {
+      margin-bottom: 12px;
+    }
+    .slider-track {
+      height: 5px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      position: relative;
+    }
+    .slider-fill {
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #FF6B35, #ff9261);
+      border-radius: 3px;
+    }
+    .slider-thumb {
+      width: 22px; height: 22px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      left: calc(40% - 11px);
+      top: 50%;
+      transform: translateY(-50%);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,107,53,0.3);
+    }
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+    .slider-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+    }
+    .poi-summary {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      text-align: center;
+    }
+    .poi-summary strong { color: #FF6B35; }
+    /* Nav dots for mockup pages */
+    .nav-dots {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .nav-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      text-decoration: none;
+      display: block;
+      transition: background 0.2s;
+    }
+    .nav-dot.active { background: #FF6B35; width: 22px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="label">mockup 1 of 3 — radial view</div>
+
+  <div class="phone-frame">
+
+    <!-- ── MAP BACKGROUND ── -->
+    <svg style="position:absolute;inset:0" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg">
+      <rect width="390" height="844" fill="#141425"/>
+      <!-- Major streets -->
+      <line x1="0" y1="185" x2="390" y2="165" stroke="#1c1c34" stroke-width="9"/>
+      <line x1="0" y1="372" x2="390" y2="355" stroke="#1c1c34" stroke-width="9"/>
+      <line x1="0" y1="548" x2="390" y2="535" stroke="#1c1c34" stroke-width="9"/>
+      <line x1="0" y1="700" x2="390" y2="692" stroke="#1c1c34" stroke-width="7"/>
+      <line x1="78"  y1="0" x2="68"  y2="844" stroke="#1c1c34" stroke-width="9"/>
+      <line x1="198" y1="0" x2="193" y2="844" stroke="#1c1c34" stroke-width="9"/>
+      <line x1="312" y1="0" x2="320" y2="844" stroke="#1c1c34" stroke-width="9"/>
+      <!-- Minor streets -->
+      <line x1="0" y1="278" x2="390" y2="262" stroke="#181830" stroke-width="4"/>
+      <line x1="0" y1="460" x2="390" y2="446" stroke="#181830" stroke-width="4"/>
+      <line x1="0" y1="622" x2="390" y2="614" stroke="#181830" stroke-width="4"/>
+      <line x1="138" y1="0" x2="132" y2="844" stroke="#181830" stroke-width="4"/>
+      <line x1="254" y1="0" x2="258" y2="844" stroke="#181830" stroke-width="4"/>
+      <line x1="350" y1="0" x2="356" y2="844" stroke="#181830" stroke-width="3"/>
+      <line x1="26"  y1="0" x2="20"  y2="844" stroke="#181830" stroke-width="3"/>
+      <!-- Diagonal avenue -->
+      <line x1="0" y1="590" x2="260" y2="90" stroke="#1c1c34" stroke-width="7"/>
+      <line x1="195" y1="844" x2="390" y2="380" stroke="#181830" stroke-width="4"/>
+      <!-- Park -->
+      <rect x="220" y="440" width="88" height="72" fill="#16221a" rx="5"/>
+      <rect x="228" y="448" width="22" height="12" fill="#1d2e22" rx="2"/>
+      <rect x="258" y="450" width="14" height="14" fill="#1d2e22" rx="7"/>
+      <rect x="278" y="448" width="20" height="16" fill="#1d2e22" rx="2"/>
+      <!-- Building footprints -->
+      <rect x="89"  y="200" width="38" height="52" fill="#171730" rx="2"/>
+      <rect x="138" y="202" width="44" height="52" fill="#171730" rx="2"/>
+      <rect x="214" y="200" width="34" height="44" fill="#171730" rx="2"/>
+      <rect x="258" y="202" width="48" height="44" fill="#171730" rx="2"/>
+      <rect x="328" y="200" width="40" height="44" fill="#171730" rx="2"/>
+      <rect x="89"  y="386" width="38" height="48" fill="#171730" rx="2"/>
+      <rect x="138" y="386" width="48" height="48" fill="#171730" rx="2"/>
+      <rect x="328" y="386" width="40" height="44" fill="#171730" rx="2"/>
+      <rect x="89"  y="565" width="40" height="58" fill="#171730" rx="2"/>
+      <rect x="140" y="565" width="52" height="58" fill="#171730" rx="2"/>
+      <rect x="258" y="565" width="48" height="58" fill="#171730" rx="2"/>
+      <rect x="330" y="565" width="40" height="58" fill="#171730" rx="2"/>
+    </svg>
+
+    <!-- ── RADIAL OVERLAY ── -->
+    <svg style="position:absolute;inset:0;pointer-events:none" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3.5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-soft">
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Isochrone fill — 10 min walk, irregular blob, center 195,422 -->
+      <path d="M 195,248 C 248,244 308,260 338,296 C 368,332 364,378 356,416
+               C 348,454 332,498 308,530 C 284,562 252,576 218,578
+               C 184,580 148,570 116,548 C 84,526 60,490 50,450
+               C 40,410 48,366 68,330 C 88,294 118,264 152,252
+               C 166,247 180,248 195,248 Z"
+            fill="rgba(255,107,53,0.09)" stroke="#FF6B35" stroke-width="1.5" stroke-opacity="0.45"/>
+
+      <!-- Compass rose – cardinal ticks -->
+      <line x1="195" y1="175" x2="195" y2="198" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+      <text x="195" y="169" text-anchor="middle" fill="rgba(255,255,255,0.32)" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">N</text>
+      <line x1="195" y1="669" x2="195" y2="646" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+      <text x="195" y="685" text-anchor="middle" fill="rgba(255,255,255,0.32)" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">S</text>
+      <line x1="370" y1="422" x2="347" y2="422" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+      <text x="382" y="426" text-anchor="middle" fill="rgba(255,255,255,0.32)" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">E</text>
+      <line x1="20"  y1="422" x2="43"  y2="422" stroke="rgba(255,255,255,0.22)" stroke-width="1.5"/>
+      <text x="9"   y="426" text-anchor="middle" fill="rgba(255,255,255,0.32)" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">W</text>
+      <!-- Intercardinal ticks -->
+      <line x1="283" y1="202" x2="272" y2="213" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="354" y1="278" x2="344" y2="290" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="107" y1="202" x2="118" y2="213" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="36"  y1="278" x2="46"  y2="290" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="354" y1="566" x2="344" y2="554" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="36"  y1="566" x2="46"  y2="554" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="283" y1="638" x2="272" y2="627" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="107" y1="638" x2="118" y2="627" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+
+      <!-- ══ NEEDLES ══
+           All pivot at center 195,422
+           Formula: tip_x = 195 + sin(bearing°) * length
+                    tip_y = 422 - cos(bearing°) * length
+           dist encoding: length=80-dist*48, opacity=1-dist*0.65, sw=3-dist*2, tip=12-dist*7
+      -->
+
+      <!-- 1. NNE 22° dist=0.22 → len=69.4 op=0.857 sw=2.56 tip=10.5 — CLOSE GLOW -->
+      <!-- tip: 195+sin22°*69.4=195+26=221, 422-cos22°*69.4=422-64.4=357.6 -->
+      <g filter="url(#glow)">
+        <line x1="195" y1="422" x2="221" y2="358" stroke="#FF6B35" stroke-width="2.56" stroke-linecap="round" opacity="0.857"/>
+        <polygon points="221,358 215.5,370 226.5,370" fill="#FF6B35" opacity="0.857"/>
+      </g>
+      <text x="224" y="347" fill="#FF6B35" font-size="10" font-weight="600" font-family="-apple-system,sans-serif" opacity="0.9">Stumptown</text>
+
+      <!-- 2. E 92° dist=0.58 → len=52.2 op=0.623 sw=1.84 tip=7.9 -->
+      <!-- tip: 195+sin92°*52.2=195+52.1=247, 422-cos92°*52.2=422+1.8=423.8 -->
+      <line x1="195" y1="422" x2="247" y2="424" stroke="#FF6B35" stroke-width="1.84" stroke-linecap="round" opacity="0.623"/>
+      <polygon points="247,424 240.5,418 240.5,430" fill="#FF6B35" opacity="0.623"/>
+      <text x="253" y="428" fill="#FF6B35" font-size="10" font-family="-apple-system,sans-serif" opacity="0.68">Blue Bottle</text>
+
+      <!-- 3. SE 142° dist=0.32 → len=64.6 op=0.792 sw=2.36 tip=9.76 — CLOSE GLOW -->
+      <!-- tip: 195+sin142°*64.6=195+39.6=234.6, 422-cos142°*64.6=422+50.9=472.9 -->
+      <g filter="url(#glow)">
+        <line x1="195" y1="422" x2="235" y2="473" stroke="#FF6B35" stroke-width="2.36" stroke-linecap="round" opacity="0.792"/>
+        <polygon points="235,473 228,463 242,463" fill="#FF6B35" opacity="0.792"/>
+      </g>
+      <text x="238" y="487" fill="#FF6B35" font-size="10" font-weight="600" font-family="-apple-system,sans-serif" opacity="0.85">Ritual</text>
+
+      <!-- 4. SSE 162° dist=0.82 → len=40.6 op=0.467 sw=1.36 tip=6.3 — FAR FADED -->
+      <!-- tip: 195+sin162°*40.6=195+12.5=207.5, 422-cos162°*40.6=422+38.6=460.6 -->
+      <line x1="195" y1="422" x2="208" y2="461" stroke="#FF6B35" stroke-width="1.36" stroke-linecap="round" opacity="0.467"/>
+      <polygon points="208,461 203.8,452 212.2,452" fill="#FF6B35" opacity="0.467"/>
+
+      <!-- 5. SSW 198° dist=0.62 → len=50.2 op=0.597 sw=1.76 tip=7.7 -->
+      <!-- tip: 195+sin198°*50.2=195-15.5=179.5, 422-cos198°*50.2=422+47.8=469.8 -->
+      <line x1="195" y1="422" x2="180" y2="470" stroke="#FF6B35" stroke-width="1.76" stroke-linecap="round" opacity="0.597"/>
+      <polygon points="180,470 174.1,459 185.9,459" fill="#FF6B35" opacity="0.597"/>
+      <text x="162" y="483" fill="#FF6B35" font-size="10" font-family="-apple-system,sans-serif" opacity="0.64">Verve</text>
+
+      <!-- 6. W 268° dist=0.18 → len=71.4 op=0.883 sw=2.64 tip=10.7 — VERY CLOSE, STRONGEST GLOW -->
+      <!-- tip: 195+sin268°*71.4=195-71.3=123.7, 422-cos268°*71.4=422+2.5=424.5 -->
+      <g filter="url(#glow-soft)">
+        <line x1="195" y1="422" x2="124" y2="425" stroke="#FF6B35" stroke-width="2.64" stroke-linecap="round" opacity="0.883"/>
+        <polygon points="124,425 135,419.7 135,430.3" fill="#FF6B35" opacity="0.883"/>
+      </g>
+      <text x="100" y="421" text-anchor="end" fill="#FF6B35" font-size="10" font-weight="700" font-family="-apple-system,sans-serif" opacity="0.94">Sightglass</text>
+
+      <!-- 7. NW 318° dist=0.74 → len=44.5 op=0.519 sw=1.52 tip=6.8 — CLUSTER -->
+      <!-- tip: 195+sin318°*44.5=195-29.7=165.3, 422-cos318°*44.5=422-33.1=388.9 -->
+      <line x1="195" y1="422" x2="165" y2="389" stroke="#FF6B35" stroke-width="1.52" stroke-linecap="round" opacity="0.519"/>
+      <polygon points="165,389 159.6,397 170.4,397" fill="#FF6B35" opacity="0.519"/>
+      <!-- Cluster badge -->
+      <circle cx="162" cy="381" r="10" fill="#FF6B35" opacity="0.88"/>
+      <text x="162" y="385.5" text-anchor="middle" fill="white" font-size="11" font-weight="800" font-family="-apple-system,sans-serif">3</text>
+
+      <!-- 8. NNW 344° dist=0.44 → len=58.9 op=0.714 sw=2.12 tip=8.9 -->
+      <!-- tip: 195+sin344°*58.9=195-16.2=178.8, 422-cos344°*58.9=422-56.6=365.4 -->
+      <line x1="195" y1="422" x2="179" y2="365" stroke="#FF6B35" stroke-width="2.12" stroke-linecap="round" opacity="0.714"/>
+      <polygon points="179,365 173.5,376 184.5,376" fill="#FF6B35" opacity="0.714"/>
+      <text x="172" y="355" fill="#FF6B35" font-size="10" font-family="-apple-system,sans-serif" opacity="0.76">Equator</text>
+
+      <!-- User location dot -->
+      <!-- Accuracy ring (dashed) -->
+      <circle cx="195" cy="422" r="26" fill="rgba(59,130,246,0.05)" stroke="rgba(59,130,246,0.28)" stroke-width="1" stroke-dasharray="4 3"/>
+      <!-- Soft halo -->
+      <circle cx="195" cy="422" r="10" fill="rgba(59,130,246,0.18)"/>
+      <!-- GPS dot -->
+      <circle cx="195" cy="422" r="6.5" fill="#3B82F6" stroke="white" stroke-width="2.5"/>
+      <!-- Pulse ring (animated) -->
+      <circle cx="195" cy="422" r="12" fill="none" stroke="rgba(59,130,246,0.5)" stroke-width="1.5">
+        <animate attributeName="r" values="10;26;10" dur="2.8s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.7;0;0.7" dur="2.8s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="status-time">9:41</div>
+      <div class="status-icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="3" width="3" height="9" rx="1"/><rect x="4.5" y="2" width="3" height="10" rx="1"/><rect x="9" y="0" width="3" height="12" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1" opacity="0.3"/></svg>
+        <svg width="15" height="12" viewBox="0 0 15 12" fill="white"><path d="M7.5 2.5C9.5 2.5 11.3 3.3 12.6 4.6L14 3.2C12.3 1.5 10 0.5 7.5 0.5S2.7 1.5 1 3.2L2.4 4.6C3.7 3.3 5.5 2.5 7.5 2.5Z"/><path d="M7.5 5.5C8.8 5.5 10 6 10.9 6.9L12.3 5.5C11 4.2 9.3 3.5 7.5 3.5S4 4.2 2.7 5.5L4.1 6.9C5 6 6.2 5.5 7.5 5.5Z"/><circle cx="7.5" cy="9.5" r="2"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="white"><rect x="0" y="1" width="21" height="10" rx="2.5" stroke="white" stroke-width="1" fill="none"/><rect x="22" y="4" width="2" height="4" rx="1" fill="white" opacity="0.5"/><rect x="1.5" y="2.5" width="16" height="7" rx="1.5" fill="white"/></svg>
+      </div>
+    </div>
+
+    <!-- Search pill -->
+    <div class="search-pill">
+      <span class="search-icon">☕</span>
+      <span class="search-text">coffee shop</span>
+      <span class="search-badge">8 nearby</span>
+    </div>
+
+    <!-- Location FAB -->
+    <div class="location-fab">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="11" cy="11" r="3" fill="rgba(255,255,255,0.8)"/>
+        <line x1="11" y1="2" x2="11" y2="6" stroke="rgba(255,255,255,0.8)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="11" y1="16" x2="11" y2="20" stroke="rgba(255,255,255,0.8)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="2" y1="11" x2="6" y2="11" stroke="rgba(255,255,255,0.8)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="16" y1="11" x2="20" y2="11" stroke="rgba(255,255,255,0.8)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Bottom sheet -->
+    <div class="bottom-sheet">
+      <div class="drag-handle"></div>
+      <div class="sheet-top-row">
+        <div class="budget-block">
+          <div class="budget-label">walking budget</div>
+          <div class="budget-value">10 <span class="budget-unit">min</span></div>
+        </div>
+        <div class="profile-pills">
+          <div class="pill active">🚶 Walk</div>
+          <div class="pill">🚴 Bike</div>
+          <div class="pill">🚗 Drive</div>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-track">
+          <div class="slider-fill"></div>
+          <div class="slider-thumb"></div>
+        </div>
+        <div class="slider-labels">
+          <span class="slider-label">1 min</span>
+          <span class="slider-label">15 min</span>
+          <span class="slider-label">30 min</span>
+          <span class="slider-label">1 hr</span>
+        </div>
+      </div>
+      <div class="poi-summary"><strong>8 coffee shops</strong> within 10 min walk · tap a needle</div>
+    </div>
+  </div>
+
+  <!-- Page nav -->
+  <div style="display:flex;gap:10px;align-items:center">
+    <div class="nav-dot active"></div>
+    <a href="mockup-controls.html" class="nav-dot" style="background:rgba(255,255,255,0.2)"></a>
+    <a href="mockup-extrawalk.html" class="nav-dot" style="background:rgba(255,255,255,0.2)"></a>
+  </div>
+  <div class="label">open mockup-controls.html → mockup-extrawalk.html</div>
+</body>
+</html>
