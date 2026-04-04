@@ -25,6 +25,7 @@ export default function App() {
   const markerRef    = useRef<mapboxgl.Marker | null>(null)
 
   const [mapReady,  setMapReady]  = useState(false)
+  const [mapError,  setMapError]  = useState<string | null>(null)
   const [location,  setLocation]  = useState<[number, number] | null>(null)
   const [mode,      setMode]      = useState('walking')
   const [minutes,   setMinutes]   = useState(10)
@@ -45,6 +46,12 @@ export default function App() {
       antialias: true,
     })
     mapRef.current = map
+
+    map.on('error', (e) => {
+      if (e.error?.status === 401 || e.error?.message?.toLowerCase().includes('unauthorized')) {
+        setMapError('Map failed to load — token may be invalid or domain-restricted.')
+      }
+    })
 
     map.on('load', () => {
       // Isochrone GeoJSON source
@@ -142,7 +149,19 @@ export default function App() {
     return () => { cancelled = true }
   }, [mapReady, location, mode, minutes])
 
-  // ── No token screen ───────────────────────────────────────────────────────
+  // ── No token / map error screens ─────────────────────────────────────────
+  if (mapError) {
+    return (
+      <div style={styles.center}>
+        <div style={{ fontSize: 40 }}>⚠️</div>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>Map error</div>
+        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', maxWidth: 280, textAlign: 'center', lineHeight: 1.5 }}>
+          {mapError}
+        </div>
+      </div>
+    )
+  }
+
   if (!TOKEN) {
     return (
       <div style={styles.center}>
