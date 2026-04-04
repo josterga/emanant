@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#0f0f1a"/>
+  <!-- Radiating arcs from bottom-center origin point -->
+  <circle cx="16" cy="22" r="3"  stroke="#FF6B35" stroke-width="1.5" stroke-dasharray="19 100" stroke-dashoffset="-3"/>
+  <circle cx="16" cy="22" r="7"  stroke="#FF6B35" stroke-width="1.5" stroke-dasharray="22 100" stroke-dashoffset="-9" opacity="0.7"/>
+  <circle cx="16" cy="22" r="11" stroke="#FF6B35" stroke-width="1.5" stroke-dasharray="24 100" stroke-dashoffset="-17" opacity="0.4"/>
+  <!-- Origin dot -->
+  <circle cx="16" cy="22" r="2" fill="#FF6B35"/>
+</svg>
