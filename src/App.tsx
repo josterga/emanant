@@ -47,6 +47,26 @@ export default function App() {
     mapRef.current = map
 
     map.on('load', () => {
+      // Terrain DEM — gives hillshade context for why the isochrone
+      // boundary falls where it does (especially for walk/cycle modes)
+      map.addSource('terrain-dem', {
+        type: 'raster-dem',
+        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+        tileSize: 512,
+        maxzoom: 14,
+      })
+
+      map.setTerrain({ source: 'terrain-dem', exaggeration: 1 })
+
+      map.addLayer({
+        id: 'hillshade',
+        type: 'hillshade',
+        source: 'terrain-dem',
+        paint: {
+          'hillshade-exaggeration': 0.3,
+        },
+      })
+
       // Isochrone GeoJSON source
       map.addSource('isochrone', {
         type: 'geojson',
