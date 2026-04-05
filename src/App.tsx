@@ -42,14 +42,29 @@ function formatDistance(metres: number, units: 'metric' | 'imperial'): string {
   return metres < 1000 ? `${Math.round(metres)}m` : `${(metres / 1000).toFixed(1)}km`
 }
 
-// Compute the actual bounding radius from the isochrone polygon vertices so the
-// Tilequery covers the full (road-topology-shaped) isochrone extent.
+// Returns the max vertex distance from center — used to size each per-sample Tilequery radius.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isochroneRadius(center: [number, number], isoData: any): number {
   const ring: [number, number][] = isoData?.features?.[0]?.geometry?.coordinates?.[0] ?? []
   let max = 0
   for (const v of ring) max = Math.max(max, metersApart(center, v as [number, number]))
-  return Math.min(Math.ceil(max * 1.1), 50_000) // 10% buffer, API cap
+  return Math.min(Math.ceil(max * 1.1), 50_000)
+}
+
+// Returns [center, ...N evenly-spaced boundary points] for parallel Tilequery coverage.
+// Walking (small isochrone): centre alone covers everything.
+// Cycling/driving: boundary points pick up outer neighbourhoods the centre query misses.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isoSamplePoints(center: [number, number], isoData: any, nBoundary: number): [number, number][] {
+  const ring: [number, number][] = isoData?.features?.[0]?.geometry?.coordinates?.[0] ?? []
+  const points: [number, number][] = [center]
+  if (ring.length === 0 || nBoundary === 0) return points
+  const step = Math.floor(ring.length / nBoundary)
+  for (let i = 0; i < nBoundary; i++) {
+    const v = ring[(i * step) % ring.length] as [number, number]
+    if (v) points.push(v)
+  }
+  return points
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -258,53 +273,64 @@ export default function App() {
         if (cancelled) return
         ;(map.getSource('isochrone') as mapboxgl.GeoJSONSource)?.setData(isoData)
 
-        const radius = isochroneRadius([lng, lat], isoData)
-        const tqUrl =
-          `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/${lng},${lat}.json` +
-          `?radius=${radius}&limit=50&layers=place_label&access_token=${TOKEN}`
+        // For large isochrones (cycling/driving) the Tilequery limit=50 from a single
+        // centre point misses outer neighbourhoods. Sample the polygon boundary at
+        // evenly-spaced intervals and run parallel queries; each covers a local radius
+        // sized so adjacent queries overlap.
+        const isoRadius  = isochroneRadius([lng, lat], isoData)
+        const nBoundary  = isoRadius < 2_000 ? 0 : 4   // walk: 1 query; cycling+: 5 queries
+        const samples    = isoSamplePoints([lng, lat], isoData, nBoundary)
+        const queryRadius = Math.min(Math.ceil(isoRadius * 0.7), 10_000)
 
-        return fetch(tqUrl)
-          .then(r => { if (!r.ok) throw new Error('tq'); return r.json() })
+        const tqRequests = samples.map(([qLng, qLat]) =>
+          fetch(
+            `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/${qLng},${qLat}.json` +
+            `?radius=${queryRadius}&limit=50&layers=place_label&access_token=${TOKEN}`
+          ).then(r => r.ok ? r.json() : { features: [] })
+        )
+
+        return Promise.all(tqRequests).then(responses => {
+          if (cancelled) return
+          const isoGeom = isoData.features?.[0]?.geometry
+
+          const EXCLUDE_TYPES = new Set(['country', 'state', 'region', 'country_subdivision', 'city'])
+          const REACH_CAP = 12
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .then((tqData: any) => {
-            if (cancelled) return
-            const isoGeom = isoData.features?.[0]?.geometry
+          const allFeatures = responses.flatMap((r: any) => r.features ?? [])
 
-            // Exclude only large admin units (city and above); accept all place_label sublabels
-            const EXCLUDE_TYPES = new Set(['country', 'state', 'region', 'country_subdivision', 'city'])
-
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const hits: ReachNeighborhood[] = allFeatures
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const hits: ReachNeighborhood[] = (tqData.features ?? [])
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .filter((f: any) => {
-                const t: string = f.properties?.type ?? f.properties?.class ?? ''
-                return !EXCLUDE_TYPES.has(t)
-              })
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .filter((f: any) => {
-                const coords = f.geometry?.coordinates as [number, number] | undefined
-                return coords ? pointInFeature(coords, isoGeom) : false
-              })
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .map((f: any) => {
-                const coords = f.geometry.coordinates as [number, number]
-                const name: string = f.properties?.name ?? f.properties?.text ?? ''
-                const b = bearingTo([lng, lat], coords)
-                const { cardinal, arrow } = toCardinal(b)
-                return { name, bearing: b, cardinal, arrow, distanceM: metersApart([lng, lat], coords) }
-              })
-              .sort((a: ReachNeighborhood, b: ReachNeighborhood) => a.distanceM - b.distanceM)
-
-            // Deduplicate — same label can appear at multiple zoom levels
-            const seen = new Set<string>()
-            const unique = hits.filter((h: ReachNeighborhood) => {
-              if (!h.name || seen.has(h.name)) return false
-              seen.add(h.name)
-              return true
+            .filter((f: any) => {
+              const t: string = f.properties?.type ?? f.properties?.class ?? ''
+              return !EXCLUDE_TYPES.has(t)
             })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .filter((f: any) => {
+              const coords = f.geometry?.coordinates as [number, number] | undefined
+              return coords ? pointInFeature(coords, isoGeom) : false
+            })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((f: any) => {
+              const coords = f.geometry.coordinates as [number, number]
+              const name: string = f.properties?.name ?? f.properties?.text ?? ''
+              const b = bearingTo([lng, lat], coords)
+              const { cardinal, arrow } = toCardinal(b)
+              return { name, bearing: b, cardinal, arrow, distanceM: metersApart([lng, lat], coords) }
+            })
+            .sort((a: ReachNeighborhood, b: ReachNeighborhood) => a.distanceM - b.distanceM)
 
-            setReachList(unique)
+          // Deduplicate by name (same label can appear across multiple zoom-level tiles)
+          const seen = new Set<string>()
+          const unique = hits.filter((h: ReachNeighborhood) => {
+            if (!h.name || seen.has(h.name)) return false
+            seen.add(h.name)
+            return true
           })
+
+          setReachList(unique.slice(0, REACH_CAP))
+        })
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false) })
