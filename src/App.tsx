@@ -202,6 +202,14 @@ function DriveIcon() {
   )
 }
 
+function SettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94zM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+    </svg>
+  )
+}
+
 const MODE_ICONS: Record<string, () => JSX.Element> = {
   walking: WalkIcon,
   cycling: BikeIcon,
@@ -270,6 +278,7 @@ export default function App() {
   const [heading,        setHeading]        = useState<number | null>(null)
   const [compassEnabled, setCompassEnabled] = useState(false)
   const [settingsOpen,   setSettingsOpen]   = useState(false)
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [units,          setUnits]          = useState<'metric' | 'imperial'>(
     () => (localStorage.getItem('units') as 'metric' | 'imperial') ?? 'metric'
   )
@@ -601,84 +610,94 @@ export default function App() {
       <div style={S.sheet}>
 
         {/* Handle row with settings gear */}
-        <div style={{ position: 'relative', marginBottom: 18 }}>
+        <div
+          style={{ position: 'relative', marginBottom: panelCollapsed ? 0 : 18, cursor: 'pointer' }}
+          onClick={() => setPanelCollapsed(x => !x)}
+          aria-label={panelCollapsed ? 'Expand panel' : 'Collapse panel'}
+        >
           <div style={S.handle} />
-          <button onClick={() => setSettingsOpen(x => !x)} style={S.gearBtn} aria-label="Settings">⚙</button>
+          <button onClick={e => { e.stopPropagation(); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
+            <SettingsIcon />
+          </button>
         </div>
 
-        {/* Settings section */}
-        {settingsOpen && (
-          <div style={S.settingsRow}>
-            {/* Appearance */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Appearance</span>
-              <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${t.btnBorder}` }}>
-                {(['light', 'system', 'dark'] as const).map((m, i) => (
-                  <button
-                    key={m}
-                    onClick={() => setTheme(m)}
-                    style={{
-                      padding: '5px 10px',
-                      background: themeMode === m ? 'rgba(99,102,241,0.18)' : t.btnBg,
-                      border: 'none',
-                      borderRight: i < 2 ? `1px solid ${t.btnBorder}` : 'none',
-                      color: themeMode === m ? '#818cf8' : t.btnText,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {m === 'system' ? 'Auto' : m.charAt(0).toUpperCase() + m.slice(1)}
+        {!panelCollapsed && (
+          <>
+            {/* Settings section */}
+            {settingsOpen && (
+              <div style={S.settingsRow}>
+                {/* Appearance */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Appearance</span>
+                  <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${t.btnBorder}` }}>
+                    {(['light', 'system', 'dark'] as const).map((m, i) => (
+                      <button
+                        key={m}
+                        onClick={() => setTheme(m)}
+                        style={{
+                          padding: '5px 10px',
+                          background: themeMode === m ? 'rgba(99,102,241,0.18)' : t.btnBg,
+                          border: 'none',
+                          borderRight: i < 2 ? `1px solid ${t.btnBorder}` : 'none',
+                          color: themeMode === m ? '#818cf8' : t.btnText,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {m === 'system' ? 'Auto' : m.charAt(0).toUpperCase() + m.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Separator */}
+                <div style={{ width: 1, height: 20, background: t.borderFaint }} />
+
+                {/* Units */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Units</span>
+                  <button onClick={toggleUnits} style={S.settingsBtn}>
+                    {units === 'metric' ? 'km' : 'mi'}
                   </button>
-                ))}
+                </div>
+
+                {/* Separator */}
+                <div style={{ width: 1, height: 20, background: t.borderFaint }} />
+
+                {/* Compass */}
+                {!compassEnabled
+                  ? <button onClick={requestCompass} style={S.settingsBtn}>Enable compass</button>
+                  : <span style={{ fontSize: 12, color: t.subduedFg }}>Compass active</span>
+                }
               </div>
+            )}
+
+            {/* Duration */}
+            <div style={S.sectionLabel}>Duration</div>
+            <div style={S.row}>
+              {TIMES.map((t_) => (
+                <button key={t_} onClick={() => setMinutes(t_)} style={minuteBtn(t_ === minutes, color, t)}>
+                  {t_}m
+                </button>
+              ))}
             </div>
 
-            {/* Separator */}
-            <div style={{ width: 1, height: 20, background: t.borderFaint }} />
-
-            {/* Units */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Units</span>
-              <button onClick={toggleUnits} style={S.settingsBtn}>
-                {units === 'metric' ? 'km' : 'mi'}
-              </button>
+            {/* Travel mode */}
+            <div style={{ ...S.sectionLabel, marginTop: 16 }}>Travel mode</div>
+            <div style={S.row}>
+              {MODES.map((m) => {
+                const Icon = MODE_ICONS[m.id]
+                return (
+                  <button key={m.id} onClick={() => setMode(m.id)} style={modeBtn(m.id === mode, MODE_COLOR[m.id], t)}>
+                    <Icon />
+                    <span>{m.label}</span>
+                  </button>
+                )
+              })}
             </div>
-
-            {/* Separator */}
-            <div style={{ width: 1, height: 20, background: t.borderFaint }} />
-
-            {/* Compass */}
-            {!compassEnabled
-              ? <button onClick={requestCompass} style={S.settingsBtn}>Enable compass</button>
-              : <span style={{ fontSize: 12, color: t.subduedFg }}>Compass active</span>
-            }
-          </div>
+          </>
         )}
-
-        {/* Duration */}
-        <div style={S.sectionLabel}>Duration</div>
-        <div style={S.row}>
-          {TIMES.map((t_) => (
-            <button key={t_} onClick={() => setMinutes(t_)} style={minuteBtn(t_ === minutes, color, t)}>
-              {t_}m
-            </button>
-          ))}
-        </div>
-
-        {/* Travel mode */}
-        <div style={{ ...S.sectionLabel, marginTop: 16 }}>Travel mode</div>
-        <div style={S.row}>
-          {MODES.map((m) => {
-            const Icon = MODE_ICONS[m.id]
-            return (
-              <button key={m.id} onClick={() => setMode(m.id)} style={modeBtn(m.id === mode, MODE_COLOR[m.id], t)}>
-                <Icon />
-                <span>{m.label}</span>
-              </button>
-            )
-          })}
-        </div>
       </div>
     </div>
   )
@@ -725,6 +744,7 @@ function makeStyles(t: Tok) {
       padding: '12px 20px',
       paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
       zIndex: 10,
+      transition: 'padding 0.2s ease',
     },
     handle: {
       width: 36, height: 4,
@@ -740,11 +760,11 @@ function makeStyles(t: Tok) {
       background: 'none',
       border: 'none',
       color: t.gearColor,
-      fontSize: 18,
       cursor: 'pointer',
       padding: '4px 2px',
       lineHeight: 1,
-      fontFamily: 'inherit',
+      display: 'flex',
+      alignItems: 'center',
     },
     settingsRow: {
       display: 'flex' as const,
