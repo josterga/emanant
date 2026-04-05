@@ -335,7 +335,7 @@ export default function App() {
   const [mapReady,       setMapReady]       = useState(false)
   const [location,       setLocation]       = useState<[number, number] | null>(null)
   const [mode,           setMode]           = useState('walking')
-  const [minutes,        setMinutes]        = useState(10)
+  const [minutes,        setMinutes]        = useState(15)
   const [loading,        setLoading]        = useState(false)
   const [locError,       setLocError]       = useState(false)
   const [neighborhood,   setNeighborhood]   = useState<string | null>(null)
