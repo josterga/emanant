@@ -32,6 +32,77 @@ body {
   background: #3B82F6;
   border: 2.5px solid white;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  transform-origin: center center;
+}
+
+/* Direction arrow — hidden until compass enabled */
+.user-dot::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 8px solid #3B82F6;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.user-dot--has-compass::before {
+  opacity: 1;
+}
+
+/* Neighborhood reach list */
+.reach-list {
+  margin-top: 8px;
+  background: rgba(20, 20, 37, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.reach-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.reach-item:last-child {
+  border-bottom: none;
+}
+
+.reach-arrow {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.reach-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reach-dist {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @keyframes pulse {
