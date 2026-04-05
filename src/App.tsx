@@ -611,7 +611,7 @@ export default function App() {
           <div style={S.settingsRow}>
             {/* Appearance */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={S.sectionLabel}>Appearance</span>
+              <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Appearance</span>
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${t.btnBorder}` }}>
                 {(['light', 'system', 'dark'] as const).map((m, i) => (
                   <button
@@ -639,7 +639,7 @@ export default function App() {
 
             {/* Units */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={S.sectionLabel}>Units</span>
+              <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Units</span>
               <button onClick={toggleUnits} style={S.settingsBtn}>
                 {units === 'metric' ? 'km' : 'mi'}
               </button>

@@ -12,8 +12,8 @@ html, body, #root {
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-  background: #0f0f1a;
-  color: white;
+  background: #f5f5f0; /* light mode default; JS overrides for dark */
+  color: #0f0f18;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -33,6 +33,7 @@ body {
   border: 2.5px solid white;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
   position: relative;
+  overflow: visible;
   transform-origin: center center;
 }
 
@@ -57,12 +58,28 @@ body {
   opacity: 1;
 }
 
-/* Neighborhood reach list */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.85); }
+}
+
+.loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF6B35;
+  animation: pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* ── Neighborhood reach list ───────────────────────────────────────────────── */
+/* Colors driven by CSS custom properties set from JS (tok() values)           */
+
 .reach-list {
   margin-top: 8px;
-  background: rgba(20, 20, 37, 0.95);
+  background: var(--reach-bg, rgba(248, 248, 245, 0.97));
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--reach-border, rgba(0, 0, 0, 0.1));
   border-radius: 14px;
   overflow: hidden;
   min-width: 220px;
@@ -74,9 +91,9 @@ body {
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--reach-item-border, rgba(0, 0, 0, 0.06));
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--reach-text, rgba(15, 15, 25, 0.75));
 }
 
 .reach-item:last-child {
@@ -85,7 +102,7 @@ body {
 
 .reach-arrow {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--reach-arrow, rgba(15, 15, 25, 0.4));
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 36px;
@@ -100,21 +117,7 @@ body {
 
 .reach-dist {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--reach-dist, rgba(15, 15, 25, 0.38));
   white-space: nowrap;
-  flex-shrink: 0;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(0.85); }
-}
-
-.loading-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #FF6B35;
-  animation: pulse 1s ease-in-out infinite;
   flex-shrink: 0;
 }
