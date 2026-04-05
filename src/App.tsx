@@ -4,6 +4,16 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
+const LOCATION_INTERVAL_MS = 10_000 // poll GPS every 10 seconds
+const MOVE_THRESHOLD_M = 10        // only refetch isochrone after 10m movement (above GPS noise floor)
+
+function metersApart(a: [number, number], b: [number, number]): number {
+  const R = 6_371_000
+  const dLat = ((b[1] - a[1]) * Math.PI) / 180
+  const dLng = ((b[0] - a[0]) * Math.PI) / 180
+  return Math.sqrt(dLat * dLat + dLng * dLng) * R
+}
+
 const MODES: { id: string; label: string; icon: string }[] = [
   { id: 'walking', label: 'Walk',  icon: '🚶' },
   { id: 'cycling', label: 'Bike',  icon: '🚴' },
@@ -20,9 +30,10 @@ const MODE_COLOR: Record<string, string> = {
 }
 
 export default function App() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef       = useRef<mapboxgl.Map | null>(null)
-  const markerRef    = useRef<mapboxgl.Marker | null>(null)
+  const containerRef    = useRef<HTMLDivElement>(null)
+  const mapRef          = useRef<mapboxgl.Map | null>(null)
+  const markerRef       = useRef<mapboxgl.Marker | null>(null)
+  const lastFetchedRef  = useRef<[number, number] | null>(null)
 
   const [mapReady,  setMapReady]  = useState(false)
   const [location,  setLocation]  = useState<[number, number] | null>(null)
@@ -99,24 +110,48 @@ export default function App() {
       setMapReady(true)
     })
 
-    // Get user location
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const lnglat: [number, number] = [coords.longitude, coords.latitude]
-        setLocation(lnglat)
-        map.flyTo({ center: lnglat, zoom: 14, duration: 1000 })
+    // Poll GPS every LOCATION_INTERVAL_MS; updates marker always, isochrone only after MOVE_THRESHOLD_M
+    let firstFix = true
 
+    function handlePosition({ coords }: GeolocationPosition) {
+      const lnglat: [number, number] = [coords.longitude, coords.latitude]
+
+      // Always update marker position
+      if (markerRef.current) {
+        markerRef.current.setLngLat(lnglat)
+      } else {
         const el = document.createElement('div')
         el.className = 'user-dot'
         markerRef.current = new mapboxgl.Marker({ element: el })
           .setLngLat(lnglat)
           .addTo(map)
-      },
-      () => setLocError(true),
-      { enableHighAccuracy: true, timeout: 10_000 }
+      }
+
+      // Fly to location on first fix only
+      if (firstFix) {
+        firstFix = false
+        map.flyTo({ center: lnglat, zoom: 14, duration: 1000 })
+      }
+
+      // Only update location state (triggers isochrone refetch) if moved enough
+      const last = lastFetchedRef.current
+      if (!last || metersApart(last, lnglat) >= MOVE_THRESHOLD_M) {
+        lastFetchedRef.current = lnglat
+        setLocation(lnglat)
+      }
+    }
+
+    const geoOpts: PositionOptions = { enableHighAccuracy: true, timeout: 10_000 }
+
+    // Immediate first fix, then poll on interval
+    navigator.geolocation.getCurrentPosition(handlePosition, () => setLocError(true), geoOpts)
+    const intervalId = setInterval(
+      () => navigator.geolocation.getCurrentPosition(handlePosition, () => {/* keep last known */}, geoOpts),
+      LOCATION_INTERVAL_MS
     )
 
     return () => {
+      clearInterval(intervalId)
       markerRef.current?.remove()
       map.remove()
     }
