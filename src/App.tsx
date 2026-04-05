@@ -39,8 +39,9 @@ export default function App() {
   const [location,  setLocation]  = useState<[number, number] | null>(null)
   const [mode,      setMode]      = useState('walking')
   const [minutes,   setMinutes]   = useState(10)
-  const [loading,   setLoading]   = useState(false)
-  const [locError,  setLocError]  = useState(false)
+  const [loading,      setLoading]      = useState(false)
+  const [locError,     setLocError]     = useState(false)
+  const [neighborhood, setNeighborhood] = useState<string | null>(null)
 
   // ── Init map ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -127,10 +128,20 @@ export default function App() {
           .addTo(map)
       }
 
-      // Fly to location on first fix only
+      // Fly to location and reverse-geocode neighborhood on first fix only
       if (firstFix) {
         firstFix = false
         map.flyTo({ center: lnglat, zoom: 14, duration: 1000 })
+        fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lnglat[0]},${lnglat[1]}.json` +
+          `?types=neighborhood,locality,place&access_token=${TOKEN}`
+        )
+          .then(r => r.json())
+          .then(data => {
+            const name: string | undefined = data.features?.[0]?.text
+            if (name) setNeighborhood(name)
+          })
+          .catch(() => {/* silently ignore */})
       }
 
       // Only update location state (triggers isochrone refetch) if moved enough
@@ -220,6 +231,13 @@ export default function App() {
 
       {/* Map */}
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+
+      {/* Neighborhood label */}
+      {neighborhood && (
+        <div style={{ ...styles.pill, top: 16, left: 16 }}>
+          {neighborhood}
+        </div>
+      )}
 
       {/* Loading pill */}
       {loading && (
