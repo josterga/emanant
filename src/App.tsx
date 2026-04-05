@@ -216,6 +216,72 @@ const MODE_ICONS: Record<string, () => JSX.Element> = {
   driving: DriveIcon,
 }
 
+// ── Onboarding modal ──────────────────────────────────────────────────────────
+
+function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
+  return (
+    <div
+      onClick={onDismiss}
+      style={{
+        position: 'absolute', inset: 0, zIndex: 100,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: t.bg,
+          border: `1px solid ${t.border}`,
+          borderRadius: 20,
+          padding: '28px 24px 22px',
+          maxWidth: 320,
+          width: 'calc(100% - 48px)',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
+        }}
+      >
+        <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: t.textMuted, marginBottom: 10 }}>
+          emanant
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 650, color: t.text, lineHeight: 1.25, marginBottom: 10 }}>
+          See how far you can go
+        </div>
+        <div style={{ fontSize: 14, color: t.textMuted, lineHeight: 1.55, marginBottom: 22 }}>
+          Pick a travel mode and a time window. emanant draws the area you can reach and shows every neighborhood within it.
+        </div>
+
+        {/* Mode hints */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          {[
+            { Icon: WalkIcon,  label: 'Walk',  color: '#FF6B35' },
+            { Icon: BikeIcon,  label: 'Bike',  color: '#10B981' },
+            { Icon: DriveIcon, label: 'Drive', color: '#6366F1' },
+          ].map(({ Icon, label, color }) => (
+            <div key={label} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+              background: t.btnBg, border: `1px solid ${t.btnBorder}`, borderRadius: 12, padding: '10px 0',
+            }}>
+              <span style={{ color }}><Icon /></span>
+              <span style={{ fontSize: 11, color: t.subduedFg }}>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onDismiss}
+          style={{
+            width: '100%', padding: '11px 0', borderRadius: 12,
+            background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)',
+            color: '#818cf8', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          Let's go
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MODES: { id: string; label: string }[] = [
@@ -279,6 +345,7 @@ export default function App() {
   const [compassEnabled, setCompassEnabled] = useState(false)
   const [settingsOpen,   setSettingsOpen]   = useState(false)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const [onboarded,      setOnboarded]      = useState(() => !!localStorage.getItem('onboarded'))
   const [units,          setUnits]          = useState<'metric' | 'imperial'>(
     () => (localStorage.getItem('units') as 'metric' | 'imperial') ?? 'metric'
   )
@@ -533,6 +600,11 @@ export default function App() {
     localStorage.setItem('units', next)
   }
 
+  function dismissOnboarding() {
+    localStorage.setItem('onboarded', '1')
+    setOnboarded(true)
+  }
+
   // ── No token screen ───────────────────────────────────────────────────────
   if (!TOKEN) {
     return (
@@ -606,6 +678,9 @@ export default function App() {
         </div>
       )}
 
+      {/* Onboarding */}
+      {!onboarded && <OnboardingModal t={t} onDismiss={dismissOnboarding} />}
+
       {/* Bottom sheet */}
       <div style={S.sheet}>
 
@@ -616,6 +691,14 @@ export default function App() {
           aria-label={panelCollapsed ? 'Expand panel' : 'Collapse panel'}
         >
           <div style={S.handle} />
+          {!panelCollapsed && (
+            <span style={{
+              position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 12, letterSpacing: '0.1em', color: t.textMuted, userSelect: 'none', pointerEvents: 'none',
+            }}>
+              emanant
+            </span>
+          )}
           <button onClick={e => { e.stopPropagation(); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
             <SettingsIcon />
           </button>
@@ -625,6 +708,7 @@ export default function App() {
           <>
             {/* Settings section */}
             {settingsOpen && (
+              <>
               <div style={S.settingsRow}>
                 {/* Appearance */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -671,6 +755,10 @@ export default function App() {
                   : <span style={{ fontSize: 12, color: t.subduedFg }}>Compass active</span>
                 }
               </div>
+              <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, paddingTop: 10, textAlign: 'center' }}>
+                © {new Date().getFullYear()} Emanant.app
+              </div>
+              </>
             )}
 
             {/* Duration */}
