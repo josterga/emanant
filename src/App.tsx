@@ -622,7 +622,7 @@ export default function App() {
   const S = makeStyles(t)
 
   return (
-    <div style={{ height: '100%', position: 'relative' }}>
+    <div style={{ height: '100%', position: 'relative', ['--mapctrl-bottom' as any]: panelCollapsed ? 'calc(44px + env(safe-area-inset-bottom))' : '210px' }}>
 
       {/* Map */}
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />

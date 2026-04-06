@@ -21,7 +21,7 @@ body {
 /* Override mapbox logo position so it doesn't hide behind bottom sheet */
 .mapboxgl-ctrl-bottom-left,
 .mapboxgl-ctrl-bottom-right {
-  bottom: 210px !important;
+  bottom: var(--mapctrl-bottom, 210px) !important;
 }
 
 /* User location marker */
