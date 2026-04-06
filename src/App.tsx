@@ -241,13 +241,13 @@ function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
         }}
       >
         <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: t.textMuted, marginBottom: 10 }}>
-          emanant
+          Emanant
         </div>
         <div style={{ fontSize: 20, fontWeight: 650, color: t.text, lineHeight: 1.25, marginBottom: 10 }}>
           Your world, within reach
         </div>
         <div style={{ fontSize: 14, color: t.textMuted, lineHeight: 1.55, marginBottom: 22 }}>
-          Pick a travel mode and a time window. emanant draws the area you can reach and reveals everything inside it.
+          Pick a travel mode and a time window. Emanant draws the area you can reach and reveals everything inside it.
         </div>
 
         {/* Mode hints */}
@@ -696,7 +696,7 @@ export default function App() {
               position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
               fontSize: 18, letterSpacing: '0.1em', color: t.textMuted, userSelect: 'none', pointerEvents: 'none',
             }}>
-              emanant
+              Emanant
             </span>
           )}
           {!panelCollapsed && (
