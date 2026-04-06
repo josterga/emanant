@@ -11,9 +11,9 @@ const MOVE_THRESHOLD_M     = 10
 
 function tok(dark: boolean) {
   return dark ? {
-    bodyBg:         '#0f0f1a',
-    bg:             'rgba(13,13,26,0.97)',
-    bgBlur:         'rgba(20,20,37,0.92)',
+    bodyBg:         '#0e0d0a',
+    bg:             'rgba(18,17,14,0.97)',
+    bgBlur:         'rgba(18,17,14,0.92)',
     text:           'rgba(255,255,255,0.7)',
     textMuted:      'rgba(255,255,255,0.3)',
     border:         'rgba(255,255,255,0.1)',
@@ -33,11 +33,11 @@ function tok(dark: boolean) {
     codeBorder:     'rgba(255,255,255,0.1)',
     mapStyle:       'mapbox://styles/mapbox/dark-v11',
   } : {
-    bodyBg:         '#f5f5f0',
-    bg:             'rgba(248,248,245,0.97)',
-    bgBlur:         'rgba(248,248,245,0.92)',
-    text:           'rgba(15,15,25,0.75)',
-    textMuted:      'rgba(15,15,25,0.35)',
+    bodyBg:         '#F5F3EE',
+    bg:             'rgba(245,243,238,0.97)',
+    bgBlur:         'rgba(245,243,238,0.92)',
+    text:           'rgba(42,38,32,0.82)',
+    textMuted:      'rgba(42,38,32,0.45)',
     border:         'rgba(0,0,0,0.1)',
     borderFaint:    'rgba(0,0,0,0.07)',
     borderSep:      'rgba(0,0,0,0.06)',
@@ -271,8 +271,8 @@ function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
           onClick={onDismiss}
           style={{
             width: '100%', padding: '11px 0', borderRadius: 12,
-            background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)',
-            color: '#818cf8', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            background: 'rgba(45,122,108,0.15)', border: '1px solid rgba(45,122,108,0.25)',
+            color: '#2D7A6C', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
           Let's go
@@ -293,9 +293,9 @@ const MODES: { id: string; label: string }[] = [
 const TIMES = [5, 10, 15, 20, 30]
 
 const MODE_COLOR: Record<string, string> = {
-  walking: '#FF6B35',
-  cycling: '#10B981',
-  driving: '#6366F1',
+  walking: '#D4882A',
+  cycling: '#2D7A6C',
+  driving: '#A0604A',
 }
 
 const EXCLUDE_TYPES = new Set(['country', 'state', 'region', 'country_subdivision', 'city'])
@@ -720,10 +720,10 @@ export default function App() {
                         onClick={() => setTheme(m)}
                         style={{
                           padding: '5px 10px',
-                          background: themeMode === m ? 'rgba(99,102,241,0.18)' : t.btnBg,
+                          background: themeMode === m ? 'rgba(45,122,108,0.18)' : t.btnBg,
                           border: 'none',
                           borderRight: i < 2 ? `1px solid ${t.btnBorder}` : 'none',
-                          color: themeMode === m ? '#818cf8' : t.btnText,
+                          color: themeMode === m ? '#2D7A6C' : t.btnText,
                           fontSize: 12,
                           cursor: 'pointer',
                           fontFamily: 'inherit',
