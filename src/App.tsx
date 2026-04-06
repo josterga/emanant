@@ -694,7 +694,7 @@ export default function App() {
           {!panelCollapsed && (
             <span style={{
               position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 12, letterSpacing: '0.1em', color: t.textMuted, userSelect: 'none', pointerEvents: 'none',
+              fontSize: 18, letterSpacing: '0.1em', color: t.textMuted, userSelect: 'none', pointerEvents: 'none',
             }}>
               emanant
             </span>
