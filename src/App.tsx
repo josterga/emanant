@@ -699,9 +699,11 @@ export default function App() {
               emanant
             </span>
           )}
-          <button onClick={e => { e.stopPropagation(); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
-            <SettingsIcon />
-          </button>
+          {!panelCollapsed && (
+            <button onClick={e => { e.stopPropagation(); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
+              <SettingsIcon />
+            </button>
+          )}
         </div>
 
         {!panelCollapsed && (
