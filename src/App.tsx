@@ -244,10 +244,10 @@ function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
           emanant
         </div>
         <div style={{ fontSize: 20, fontWeight: 650, color: t.text, lineHeight: 1.25, marginBottom: 10 }}>
-          See how far you can go
+          Your world, within reach
         </div>
         <div style={{ fontSize: 14, color: t.textMuted, lineHeight: 1.55, marginBottom: 22 }}>
-          Pick a travel mode and a time window. emanant draws the area you can reach and shows every neighborhood within it.
+          Pick a travel mode and a time window. emanant draws the area you can reach and reveals every neighborhood inside it.
         </div>
 
         {/* Mode hints */}
