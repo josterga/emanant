@@ -289,7 +289,7 @@ function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
 const MODES: { id: string; label: string }[] = [
   { id: 'walking', label: 'Walk'  },
   { id: 'cycling', label: 'Bike'  },
-  { id: 'driving', label: 'Drive' },
+  // { id: 'driving', label: 'Drive' },
 ]
 
 const TIMES = [5, 10, 15, 20, 30]
