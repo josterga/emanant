@@ -508,7 +508,7 @@ export default function App() {
           const lats = ring.map(([, y]: [number, number]) => y)
           map.fitBounds(
             [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-            { padding: { top: 60, bottom: panelCollapsed ? 60 : 220, left: 20, right: 20 }, duration: 800 }
+            { padding: { top: 60, bottom: panelCollapsed ? 60 : 170, left: 20, right: 20 }, duration: 800 }
           )
         }
 
@@ -645,7 +645,11 @@ export default function App() {
   const S = makeStyles(t)
 
   return (
-    <div style={{ height: '100%', position: 'relative', ['--mapctrl-bottom' as any]: panelCollapsed ? 'calc(44px + env(safe-area-inset-bottom))' : '210px' }}>
+    <div style={{ height: '100%', position: 'relative', ['--mapctrl-bottom' as any]: panelCollapsed
+        ? 'calc(40px + env(safe-area-inset-bottom))'
+        : settingsOpen
+          ? 'calc(270px + env(safe-area-inset-bottom))'
+          : 'calc(165px + env(safe-area-inset-bottom))' }}>
 
       {/* Map */}
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
@@ -798,7 +802,6 @@ export default function App() {
             )}
 
             {/* Duration */}
-            <div style={S.sectionLabel}>Duration</div>
             <div style={S.row}>
               {TIMES.map((t_) => (
                 <button key={t_} onClick={() => { setMinutes(t_); gtag('event', 'duration_changed', { mode, duration_min: t_ }) }} style={minuteBtn(t_ === minutes, color, t)}>
@@ -808,7 +811,7 @@ export default function App() {
             </div>
 
             {/* Travel mode */}
-            <div style={{ ...S.sectionLabel, marginTop: 16 }}>Travel mode</div>
+            <div style={{ marginTop: 16 }} />
             <div style={S.row}>
               {MODES.map((m) => {
                 const Icon = MODE_ICONS[m.id]
