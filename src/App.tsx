@@ -167,7 +167,7 @@ function addMapLayers(map: mapboxgl.Map): void {
       id: 'isochrone-fill',
       type: 'fill',
       source: 'isochrone',
-      paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.14 },
+      paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.06 },
     })
     map.addLayer({
       id: 'isochrone-line',
