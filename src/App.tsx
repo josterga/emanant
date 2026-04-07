@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
+declare function gtag(command: string, eventName: string, params?: Record<string, unknown>): void
+
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 const LOCATION_INTERVAL_MS = 10_000
@@ -339,6 +341,7 @@ export default function App() {
   const [loading,        setLoading]        = useState(false)
   const [locError,       setLocError]       = useState(false)
   const [neighborhood,   setNeighborhood]   = useState<string | null>(null)
+  const [city,           setCity]           = useState<string | null>(null)
   const [reachList,      setReachList]      = useState<ReachNeighborhood[]>([])
   const [listExpanded,   setListExpanded]   = useState(false)
   const [heading,        setHeading]        = useState<number | null>(null)
@@ -432,8 +435,10 @@ export default function App() {
         )
           .then(r => r.json())
           .then(data => {
-            const name: string | undefined = data.features?.[0]?.text
-            if (name) setNeighborhood(name)
+            const feat = data.features?.[0]
+            if (feat?.text) setNeighborhood(feat.text)
+            const cityCtx = feat?.context?.find((c: { id: string; text: string }) => c.id.startsWith('place.'))
+            if (cityCtx?.text) setCity(cityCtx.text)
           })
           .catch(() => {})
       }
@@ -490,6 +495,12 @@ export default function App() {
       .then((isoData: any) => {
         if (cancelled) return
         ;(map.getSource('isochrone') as mapboxgl.GeoJSONSource)?.setData(isoData)
+        gtag('event', 'isochrone_rendered', {
+          mode,
+          duration_min: minutes,
+          neighborhood: neighborhood ?? undefined,
+          city: city ?? undefined,
+        })
 
         const ring = isoData.features?.[0]?.geometry?.coordinates?.[0] as [number, number][] | undefined
         if (ring?.length) {
@@ -608,11 +619,13 @@ export default function App() {
     const next = units === 'metric' ? 'imperial' : 'metric'
     setUnits(next)
     localStorage.setItem('units', next)
+    gtag('event', 'units_toggled', { units: next })
   }
 
   function dismissOnboarding() {
     localStorage.setItem('onboarded', '1')
     setOnboarded(true)
+    gtag('event', 'onboarding_dismissed', {})
   }
 
   // ── No token screen ───────────────────────────────────────────────────────
@@ -641,7 +654,7 @@ export default function App() {
       {neighborhood && (
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>
           <div
-            onClick={() => reachList.length && setListExpanded(x => !x)}
+            onClick={() => { if (!reachList.length) return; if (!listExpanded) gtag('event', 'reach_list_expanded', {}); setListExpanded(x => !x) }}
             style={{ ...S.pill, position: 'relative', cursor: reachList.length ? 'pointer' : 'default', gap: 6 }}
           >
             {neighborhood}
@@ -710,7 +723,7 @@ export default function App() {
             </span>
           )}
           {!panelCollapsed && (
-            <button onClick={e => { e.stopPropagation(); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
+            <button onClick={e => { e.stopPropagation(); if (!settingsOpen) gtag('event', 'settings_opened', {}); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
               <SettingsIcon />
             </button>
           )}
@@ -777,7 +790,7 @@ export default function App() {
             <div style={S.sectionLabel}>Duration</div>
             <div style={S.row}>
               {TIMES.map((t_) => (
-                <button key={t_} onClick={() => setMinutes(t_)} style={minuteBtn(t_ === minutes, color, t)}>
+                <button key={t_} onClick={() => { setMinutes(t_); gtag('event', 'duration_changed', { mode, duration_min: t_ }) }} style={minuteBtn(t_ === minutes, color, t)}>
                   {t_}m
                 </button>
               ))}
@@ -789,7 +802,7 @@ export default function App() {
               {MODES.map((m) => {
                 const Icon = MODE_ICONS[m.id]
                 return (
-                  <button key={m.id} onClick={() => setMode(m.id)} style={modeBtn(m.id === mode, MODE_COLOR[m.id], t)}>
+                  <button key={m.id} onClick={() => { setMode(m.id); gtag('event', 'mode_changed', { mode: m.id, duration_min: minutes }) }} style={modeBtn(m.id === mode, MODE_COLOR[m.id], t)}>
                     <Icon />
                     <span>{m.label}</span>
                   </button>
@@ -889,7 +902,7 @@ function makeStyles(t: Tok) {
       fontSize: 11,
       fontWeight: 700 as const,
       color: t.textMuted,
-      textTransform: 'uppercase' as const,
+      textTransform: 'none' as const,
       letterSpacing: '0.8px',
       marginBottom: 10,
     },
