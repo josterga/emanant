@@ -249,7 +249,7 @@ function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
           Your world, within reach
         </div>
         <div style={{ fontSize: 14, color: t.textMuted, lineHeight: 1.55, marginBottom: 22 }}>
-          Pick a travel mode and a time window. Emanant draws the area you can reach and reveals everything inside it.
+          Every corner is a starting point. Set a time, choose how you move — where will you go?
         </div>
 
         {/* Mode hints */}
