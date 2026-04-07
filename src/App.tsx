@@ -491,6 +491,16 @@ export default function App() {
         if (cancelled) return
         ;(map.getSource('isochrone') as mapboxgl.GeoJSONSource)?.setData(isoData)
 
+        const ring = isoData.features?.[0]?.geometry?.coordinates?.[0] as [number, number][] | undefined
+        if (ring?.length) {
+          const lngs = ring.map(([x]: [number, number]) => x)
+          const lats = ring.map(([, y]: [number, number]) => y)
+          map.fitBounds(
+            [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+            { padding: { top: 60, bottom: panelCollapsed ? 60 : 220, left: 20, right: 20 }, duration: 800 }
+          )
+        }
+
         const isoRadius  = isochroneRadius([lng, lat], isoData)
         const nBoundary  = isoRadius < 2_000 ? 0 : 4
         const samples    = isoSamplePoints([lng, lat], isoData, nBoundary)
