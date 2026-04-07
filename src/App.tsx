@@ -780,7 +780,18 @@ export default function App() {
                   : <span style={{ fontSize: 12, color: t.subduedFg }}>Compass active</span>
                 }
               </div>
-              <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, paddingTop: 10, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: t.subduedFg, paddingTop: 10, textAlign: 'center' }}>
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLScctFaGMLcVCsBJFx93rlDqFJweH5F_o8_0vNqI0rvB1fHd1w/viewform?usp=sharing&ouid=100968712771359852520"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => gtag('event', 'feedback_clicked', {})}
+                  style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}
+                >
+                  Share feedback
+                </a>
+              </div>
+              <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, paddingTop: 4, textAlign: 'center' }}>
                 © {new Date().getFullYear()} Emanant.app
               </div>
               </>
