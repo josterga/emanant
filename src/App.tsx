@@ -140,6 +140,32 @@ function pointInFeature(point: [number, number], geom: any): boolean {
   return false
 }
 
+// ── Share obfuscation (XOR + URL-safe base64; key is in bundle — prevents
+//    casual address-bar reading, not a security guarantee) ─────────────────────
+
+const OBF_KEY = 'emanant-share-v1'
+
+function obfuscateCoords(lat: number, lng: number): string {
+  const payload = `${lat.toFixed(5)},${lng.toFixed(5)}`
+  const key = Array.from(OBF_KEY).map(c => c.charCodeAt(0))
+  const bytes = Array.from(payload).map((ch, i) => ch.charCodeAt(0) ^ key[i % key.length])
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
+function deobfuscateCoords(token: string): [number, number] | null {
+  try {
+    const pad = (4 - (token.length % 4)) % 4
+    const padded = token.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat(pad)
+    const key = Array.from(OBF_KEY).map(c => c.charCodeAt(0))
+    const decoded = Array.from(atob(padded)).map((ch, i) => ch.charCodeAt(0) ^ key[i % key.length])
+    const [latStr, lngStr] = String.fromCharCode(...decoded).split(',')
+    const lat = parseFloat(latStr), lng = parseFloat(lngStr)
+    if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+    return [lng, lat]  // App uses [lng, lat] tuple convention
+  } catch { return null }
+}
+
 // ── Map layer setup (called on init and after style change) ───────────────────
 
 function addMapLayers(map: mapboxgl.Map): void {
@@ -226,6 +252,14 @@ function DriveIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+    </svg>
+  )
+}
+
+function ShareIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16 5l-1.42 1.42-1.59-1.59V16h-1.98V4.83L9.42 6.42 8 5l4-4 4 4zm4 5v11c0 1.1-.9 2-2 2H6c-1.11 0-2-.9-2-2V10c0-1.11.89-2 2-2h3v2H6v11h12V10h-3V8h3c1.1 0 2 .89 2 2z"/>
     </svg>
   )
 }
@@ -379,8 +413,28 @@ export default function App() {
     () => (localStorage.getItem('units') as 'metric' | 'imperial') ?? 'metric'
   )
   const [showSpaces,     setShowSpaces]     = useState(true)
+  const [sharedLocation, setSharedLocation] = useState<[number, number] | null>(null)
+  const [shareToast,     setShareToast]     = useState<'idle' | 'copied' | 'shared'>('idle')
+
+  const effectiveLocation = sharedLocation ?? location
 
   const t = useMemo(() => tok(dark), [dark])
+
+  // ── Parse shared URL on mount ─────────────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const loc = params.get('loc')
+    if (!loc) return
+    const coords = deobfuscateCoords(loc)
+    if (!coords) return
+    setSharedLocation(coords)
+    setLocation(coords)         // prime the map marker position
+    firstFixRef.current = false // prevent GPS first-fix from flying away from the shared point
+    const m = params.get('m')
+    if (m && ['walking', 'cycling'].includes(m)) setMode(m)
+    const tParam = parseInt(params.get('t') ?? '', 10)
+    if (TIMES.includes(tParam)) setMinutes(tParam)
+  }, [])
 
   // ── System dark mode listener ─────────────────────────────────────────────
   useEffect(() => {
@@ -510,13 +564,13 @@ export default function App() {
   // ── Fetch isochrone + neighborhood reach list ─────────────────────────────
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !location || !map || !TOKEN) return
+    if (!mapReady || !effectiveLocation || !map || !TOKEN) return
 
     let cancelled = false
     setLoading(true)
     setReachList([])
 
-    const [lng, lat] = location
+    const [lng, lat] = effectiveLocation
     const isoUrl =
       `https://api.mapbox.com/isochrone/v1/mapbox/${mode}/${lng},${lat}` +
       `?contours_minutes=${minutes}&polygons=true&access_token=${TOKEN}`
@@ -595,7 +649,7 @@ export default function App() {
       .finally(() => { if (!cancelled) setLoading(false) })
 
     return () => { cancelled = true }
-  }, [mapReady, location, mode, minutes])
+  }, [mapReady, effectiveLocation, mode, minutes])
 
   // ── Compass class + reset ─────────────────────────────────────────────────
   useEffect(() => {
@@ -670,6 +724,30 @@ export default function App() {
     localStorage.setItem('onboarded', '1')
     setOnboarded(true)
     gtag('event', 'onboarding_dismissed', {})
+  }
+
+  function dismissSharedLocation() {
+    setSharedLocation(null)
+    firstFixRef.current = true  // re-enable GPS first-fix flyTo
+    window.history.replaceState({}, '', window.location.pathname)
+    gtag('event', 'shared_location_dismissed', {})
+  }
+
+  async function handleShare() {
+    if (!effectiveLocation) return
+    const [lng, lat] = effectiveLocation
+    const url = `${window.location.origin}${window.location.pathname}?loc=${obfuscateCoords(lat, lng)}&m=${mode}&t=${minutes}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'My reachable area — Emanant', url })
+        setShareToast('shared')
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setShareToast('copied')
+    }
+    setTimeout(() => setShareToast('idle'), 2000)
+    gtag('event', 'isochrone_shared', { mode, duration_min: minutes })
   }
 
   // ── No token screen ───────────────────────────────────────────────────────
@@ -749,6 +827,30 @@ export default function App() {
         </div>
       )}
 
+      {/* Shared location banner */}
+      {sharedLocation && (
+        <div style={{
+          ...S.banner,
+          background: dark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)',
+          border: '1px solid rgba(99,102,241,0.25)',
+          color: dark ? '#a5b4fc' : '#4f46e5',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          textAlign: 'left',
+        }}>
+          <span>Viewing a shared location</span>
+          <button
+            onClick={dismissSharedLocation}
+            style={{
+              background: 'none', border: 'none', color: 'inherit', cursor: 'pointer',
+              fontSize: 13, padding: '0 0 0 12px', fontFamily: 'inherit', opacity: 0.75,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Use my location ×
+          </button>
+        </div>
+      )}
+
       {/* Onboarding */}
       {!onboarded && <OnboardingModal t={t} onDismiss={dismissOnboarding} />}
 
@@ -771,9 +873,30 @@ export default function App() {
             </span>
           )}
           {!panelCollapsed && (
-            <button onClick={e => { e.stopPropagation(); if (!settingsOpen) gtag('event', 'settings_opened', {}); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
-              <SettingsIcon />
-            </button>
+            <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <button
+                onClick={e => { e.stopPropagation(); handleShare() }}
+                disabled={!effectiveLocation}
+                aria-label="Share isochrone"
+                style={{
+                  background: 'none', border: 'none',
+                  color: shareToast !== 'idle' ? '#2D7A6C' : t.gearColor,
+                  cursor: effectiveLocation ? 'pointer' : 'default',
+                  padding: '4px 6px', lineHeight: 1,
+                  display: 'flex', alignItems: 'center',
+                  opacity: effectiveLocation ? 1 : 0.3,
+                  transition: 'color 0.2s',
+                }}
+              >
+                {shareToast !== 'idle'
+                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                  : <ShareIcon />
+                }
+              </button>
+              <button onClick={e => { e.stopPropagation(); if (!settingsOpen) gtag('event', 'settings_opened', {}); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
+                <SettingsIcon />
+              </button>
+            </div>
           )}
         </div>
 
@@ -934,10 +1057,6 @@ function makeStyles(t: Tok) {
       margin: '0 auto',
     },
     gearBtn: {
-      position: 'absolute' as const,
-      right: 0,
-      top: '50%',
-      transform: 'translateY(-50%)',
       background: 'none',
       border: 'none',
       color: t.gearColor,
