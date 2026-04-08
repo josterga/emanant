@@ -158,6 +158,32 @@ function addMapLayers(map: mapboxgl.Map): void {
       paint: { 'hillshade-exaggeration': 0.3 },
     })
   }
+  if (!map.getLayer('parks-fill')) {
+    map.addLayer({
+      id: 'parks-fill',
+      type: 'fill',
+      source: 'composite',
+      'source-layer': 'landuse',
+      filter: ['in', 'class', 'park', 'playground', 'pitch', 'garden', 'national_park'],
+      paint: { 'fill-color': '#2D7A6C', 'fill-opacity': 0.12 },
+    })
+    map.addLayer({
+      id: 'parks-outline',
+      type: 'line',
+      source: 'composite',
+      'source-layer': 'landuse',
+      filter: ['in', 'class', 'park', 'playground', 'pitch', 'garden', 'national_park'],
+      paint: { 'line-color': '#2D7A6C', 'line-width': 1, 'line-opacity': 0.35 },
+    })
+    map.addLayer({
+      id: 'public-spaces-fill',
+      type: 'fill',
+      source: 'composite',
+      'source-layer': 'landuse_overlay',
+      filter: ['in', 'class', 'pedestrian', 'footway', 'plaza'],
+      paint: { 'fill-color': '#A0604A', 'fill-opacity': 0.10 },
+    })
+  }
   if (!map.getSource('isochrone')) {
     map.addSource('isochrone', {
       type: 'geojson',
@@ -352,6 +378,7 @@ export default function App() {
   const [units,          setUnits]          = useState<'metric' | 'imperial'>(
     () => (localStorage.getItem('units') as 'metric' | 'imperial') ?? 'metric'
   )
+  const [showSpaces,     setShowSpaces]     = useState(true)
 
   const t = useMemo(() => tok(dark), [dark])
 
@@ -386,12 +413,17 @@ export default function App() {
     setReachList([])
     map.once('style.load', () => {
       addMapLayers(map)
+      if (!showSpaces) {
+        ;['parks-fill', 'parks-outline', 'public-spaces-fill'].forEach(id => {
+          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
+        })
+      }
       map.setPaintProperty('isochrone-fill', 'fill-color', MODE_COLOR[mode])
       map.setPaintProperty('isochrone-line', 'line-color', MODE_COLOR[mode])
       setMapReady(true)
     })
     map.setStyle(newStyle)
-  }, [t.mapStyle, mapReady, mode])
+  }, [t.mapStyle, mapReady, mode, showSpaces])
 
   // ── Init map + GPS polling ────────────────────────────────────────────────
   useEffect(() => {
@@ -622,6 +654,18 @@ export default function App() {
     gtag('event', 'units_toggled', { units: next })
   }
 
+  function toggleSpaces() {
+    const next = !showSpaces
+    setShowSpaces(next)
+    const map = mapRef.current
+    if (map) {
+      const ids = ['parks-fill', 'parks-outline', 'public-spaces-fill']
+      ids.forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', next ? 'visible' : 'none')
+      })
+    }
+  }
+
   function dismissOnboarding() {
     localStorage.setItem('onboarded', '1')
     setOnboarded(true)
@@ -783,6 +827,17 @@ export default function App() {
                   ? <button onClick={requestCompass} style={S.settingsBtn}>Enable compass</button>
                   : <span style={{ fontSize: 12, color: t.subduedFg }}>Compass active</span>
                 }
+
+                {/* Separator */}
+                <div style={{ width: 1, height: 20, background: t.borderFaint }} />
+
+                {/* Spaces layer */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Spaces</span>
+                  <button onClick={toggleSpaces} style={S.settingsBtn}>
+                    {showSpaces ? 'On' : 'Off'}
+                  </button>
+                </div>
               </div>
               </>
             )}
