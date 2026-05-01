@@ -9,6 +9,10 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 const LOCATION_INTERVAL_MS = 10_000
 const MOVE_THRESHOLD_M     = 10
 
+// ── Speed constants (nominal — feed both speed-cap labels and drawer time calc) ─
+const WALK_SPEED_MS = 5000 / 3600   // 5 km/h → ~1.39 m/s
+const BIKE_SPEED_MS = 18000 / 3600  // 18 km/h → 5 m/s
+
 // ── Theme tokens ─────────────────────────────────────────────────────────────
 
 function tok(dark: boolean) {
@@ -34,8 +38,16 @@ function tok(dark: boolean) {
     codeBg:         'rgba(255,255,255,0.07)',
     codeBorder:     'rgba(255,255,255,0.1)',
     mapStyle:       'mapbox://styles/mapbox/dark-v11',
+    parchmentSheet: 'rgba(18,17,14,0.97)',
+    inkSoft:        'rgba(255,255,255,0.38)',
+    borderSoft:     'rgba(255,255,255,0.1)',
+    handleBar:      'rgba(255,255,255,0.14)',
+    placeChipBg:    'rgba(26,25,22,0.92)',
+    markFill:       '#1a1916',
+    dialTick:       'rgba(255,255,255,0.2)',
+    cardBg:         'rgba(255,255,255,0.06)',
   } : {
-    bodyBg:         '#F5F3EE',
+    bodyBg:         '#F2EBDD',
     bg:             'rgba(245,243,238,0.97)',
     bgBlur:         'rgba(245,243,238,0.92)',
     text:           'rgba(42,38,32,0.82)',
@@ -56,6 +68,14 @@ function tok(dark: boolean) {
     codeBg:         'rgba(0,0,0,0.05)',
     codeBorder:     'rgba(0,0,0,0.1)',
     mapStyle:       'mapbox://styles/mapbox/light-v11',
+    parchmentSheet: 'rgba(251,246,233,0.96)',
+    inkSoft:        '#7A7468',
+    borderSoft:     '#E8DFC9',
+    handleBar:      '#D9CFB6',
+    placeChipBg:    'rgba(255,255,255,0.85)',
+    markFill:       '#F2EBDD',
+    dialTick:       '#C9BE9F',
+    cardBg:         '#ffffff',
   }
 }
 
@@ -94,6 +114,20 @@ function formatDistance(metres: number, units: 'metric' | 'imperial'): string {
     return mi < 0.1 ? `${Math.round(metres * 3.28084)}ft` : `${mi.toFixed(1)}mi`
   }
   return metres < 1000 ? `${Math.round(metres)}m` : `${(metres / 1000).toFixed(1)}km`
+}
+
+function formatLatLon([lng, lat]: [number, number]): string {
+  return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lng).toFixed(2)}°${lng >= 0 ? 'E' : 'W'}`
+}
+
+function formatSpeedCap(speedMs: number, units: 'metric' | 'imperial'): string {
+  if (units === 'imperial') return `≤${Math.round(speedMs * 3600 / 1609.34)} mph`
+  return `≤${Math.round(speedMs * 3.6)} km/h`
+}
+
+function walkTimeMin(distanceM: number, mode: string): number {
+  const speed = mode === 'cycling' ? BIKE_SPEED_MS : WALK_SPEED_MS
+  return Math.max(1, Math.round(distanceM / speed / 60))
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,8 +174,7 @@ function pointInFeature(point: [number, number], geom: any): boolean {
   return false
 }
 
-// ── Share obfuscation (XOR + URL-safe base64; key is in bundle — prevents
-//    casual address-bar reading, not a security guarantee) ─────────────────────
+// ── Share obfuscation ─────────────────────────────────────────────────────────
 
 const OBF_KEY = 'emanant-share-v1'
 
@@ -162,11 +195,11 @@ function deobfuscateCoords(token: string): [number, number] | null {
     const [latStr, lngStr] = String.fromCharCode(...decoded).split(',')
     const lat = parseFloat(latStr), lng = parseFloat(lngStr)
     if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
-    return [lng, lat]  // App uses [lng, lat] tuple convention
+    return [lng, lat]
   } catch { return null }
 }
 
-// ── Map layer setup (called on init and after style change) ───────────────────
+// ── Map layer setup ───────────────────────────────────────────────────────────
 
 function addMapLayers(map: mapboxgl.Map): void {
   if (!map.getSource('terrain-dem')) {
@@ -230,116 +263,328 @@ function addMapLayers(map: mapboxgl.Map): void {
   }
 }
 
-// ── Mode icons (Material Design paths, currentColor) ─────────────────────────
+// ── Surveyor mark SVG ─────────────────────────────────────────────────────────
 
-function WalkIcon() {
+function surveyorMarkSVG(color: string, fillColor: string): string {
+  const cx = 24, cy = 24
+  return `<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${cx}" cy="${cy}" r="24" fill="none" stroke="${color}" stroke-width="0.8" class="surveyor-outer-ring"/>
+    <circle cx="${cx}" cy="${cy}" r="18" fill="${fillColor}" stroke="${color}" stroke-width="1.2"/>
+    <circle cx="${cx}" cy="${cy}" r="9" fill="${color}"/>
+    <polygon points="${cx},2 ${cx - 4},9 ${cx + 4},9" fill="${color}"/>
+  </svg>`
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function WalkIconSm() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="3" r="1.5"/>
+      <path d="M 9 5 L 7 9 L 5 13"/>
+      <path d="M 9 5 L 12 8 L 11 13"/>
+      <path d="M 7 9 L 4 8"/>
     </svg>
   )
 }
 
-function BikeIcon() {
+function BikeIconSm() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm5.8-10l2.4-2.4.8.8c1.3 1.3 3 2.1 5.1 2.1V9c-1.5 0-2.7-.6-3.6-1.5l-1.9-1.9c-.5-.4-1-.6-1.6-.6s-1.1.2-1.4.6L7.8 8.4c-.4.4-.6.9-.6 1.4 0 .6.2 1.1.6 1.4L11 14v5h2v-6l-2.2-2.5zM19 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z"/>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="4" cy="11" r="3"/>
+      <circle cx="12" cy="11" r="3"/>
+      <path d="M 4 11 L 7 5 L 11 5 L 12 11"/>
+      <path d="M 7 5 L 9 3"/>
     </svg>
   )
 }
 
-function DriveIcon() {
+function ShareIconSm() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M 8 2 L 8 11"/>
+      <path d="M 5 5 L 8 2 L 11 5"/>
+      <path d="M 3 9 L 3 13 L 13 13 L 13 9"/>
     </svg>
   )
 }
 
-function ShareIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M16 5l-1.42 1.42-1.59-1.59V16h-1.98V4.83L9.42 6.42 8 5l4-4 4 4zm4 5v11c0 1.1-.9 2-2 2H6c-1.11 0-2-.9-2-2V10c0-1.11.89-2 2-2h3v2H6v11h12V10h-3V8h3c1.1 0 2 .89 2 2z"/>
-    </svg>
-  )
-}
+// ── TimeDial ──────────────────────────────────────────────────────────────────
 
-function SettingsIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94zM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-    </svg>
-  )
-}
+const TIMES = [5, 10, 15, 20, 25, 30]
 
-const MODE_ICONS: Record<string, () => JSX.Element> = {
-  walking: WalkIcon,
-  cycling: BikeIcon,
-  driving: DriveIcon,
-}
+function TimeDial({ value, accent, tok, onChange, onCommit }: {
+  value: number
+  accent: string
+  tok: Tok
+  onChange: (v: number) => void
+  onCommit: (v: number) => void
+}) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
 
-// ── Onboarding modal ──────────────────────────────────────────────────────────
+  function snapToTick(raw: number): number {
+    return TIMES.reduce((prev, t) => Math.abs(t - raw) < Math.abs(prev - raw) ? t : prev, TIMES[0])
+  }
 
-function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
+  function valueFromPointer(clientX: number): number {
+    const rect = trackRef.current?.getBoundingClientRect()
+    if (!rect) return value
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return snapToTick(5 + pct * 25)
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragging.current = true
+    onChange(valueFromPointer(e.clientX))
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging.current) return
+    onChange(valueFromPointer(e.clientX))
+  }
+
+  function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging.current) return
+    dragging.current = false
+    onCommit(valueFromPointer(e.clientX))
+  }
+
+  const pct = (value - 5) / 25
+
   return (
     <div
-      onClick={onDismiss}
-      style={{
-        position: 'absolute', inset: 0, zIndex: 100,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)',
-      }}
+      ref={trackRef}
+      style={{ position: 'relative', height: 46, padding: '0 4px', touchAction: 'none', cursor: 'pointer', userSelect: 'none' }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
     >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: t.bg,
-          border: `1px solid ${t.border}`,
-          borderRadius: 20,
-          padding: '28px 24px 22px',
-          maxWidth: 320,
-          width: 'calc(100% - 48px)',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
-        }}
-      >
-        <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: t.textMuted, marginBottom: 10 }}>
-          Emanant
-        </div>
-        <div style={{ fontSize: 20, fontWeight: 650, color: t.text, lineHeight: 1.25, marginBottom: 10 }}>
-          Your world, within reach
-        </div>
-        <div style={{ fontSize: 14, color: t.textMuted, lineHeight: 1.55, marginBottom: 22 }}>
-          Every corner is a starting point. Set a time, choose how you move — where will you go?
-        </div>
+      {/* Rail */}
+      <div style={{ position: 'absolute', top: 20, left: 4, right: 4, height: 2, background: tok.borderSoft, borderRadius: 2 }} />
+      {/* Active fill */}
+      <div style={{ position: 'absolute', top: 20, left: 4, width: `calc(${pct * 100}% - ${pct * 8}px)`, height: 2, background: accent, borderRadius: 2, transition: 'width 0.08s ease' }} />
+      {/* Ticks + labels */}
+      {TIMES.map((tickVal, i) => {
+        const left = (i / (TIMES.length - 1)) * 100
+        const isActive = tickVal <= value
+        return (
+          <div key={tickVal} style={{ position: 'absolute', left: `${left}%`, top: 14, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, pointerEvents: 'none' }}>
+            <div style={{ width: 1.5, height: 14, background: isActive ? accent : tok.dialTick }} />
+            <span style={{ fontSize: 10, color: tickVal === value ? accent : tok.inkSoft, fontWeight: tickVal === value ? 600 : 400, fontFamily: 'Satoshi, system-ui, sans-serif' }}>
+              {tickVal}
+            </span>
+          </div>
+        )
+      })}
+      {/* Handle */}
+      <div style={{ position: 'absolute', top: 12, left: `calc(${pct * 100}% - 9px)`, width: 18, height: 18, borderRadius: '50%', background: tok.markFill, border: `2px solid ${accent}`, boxShadow: '0 1px 3px rgba(0,0,0,0.12)', pointerEvents: 'none', transition: 'left 0.08s ease' }} />
+    </div>
+  )
+}
 
-        {/* Mode hints */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {[
-            { Icon: WalkIcon,  label: 'Walk',  color: '#FF6B35' },
-            { Icon: BikeIcon,  label: 'Bike',  color: '#10B981' },
-            { Icon: DriveIcon, label: 'Drive', color: '#6366F1' },
-          ].map(({ Icon, label, color }) => (
-            <div key={label} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-              background: t.btnBg, border: `1px solid ${t.btnBorder}`, borderRadius: 12, padding: '10px 0',
-            }}>
-              <span style={{ color }}><Icon /></span>
-              <span style={{ fontSize: 11, color: t.subduedFg }}>{label}</span>
-            </div>
-          ))}
-        </div>
+// ── ModePillBar ───────────────────────────────────────────────────────────────
 
+const MODE_COLOR: Record<string, string> = {
+  walking: '#C97B3F',
+  cycling: '#3F6B5E',
+}
+const AMBER_TINT = 'rgba(201,123,63,0.10)'
+const SAGE_TINT  = 'rgba(63,107,94,0.10)'
+
+function ModePillBar({ mode, units, tok, onChange }: {
+  mode: string
+  units: 'metric' | 'imperial'
+  tok: Tok
+  onChange: (m: string) => void
+}) {
+  const pills = [
+    { id: 'walking', label: 'Walk', Icon: WalkIconSm, speed: WALK_SPEED_MS, tint: AMBER_TINT, accent: MODE_COLOR.walking },
+    { id: 'cycling', label: 'Bike', Icon: BikeIconSm, speed: BIKE_SPEED_MS, tint: SAGE_TINT,  accent: MODE_COLOR.cycling },
+  ]
+  return (
+    <div style={{ display: 'flex', gap: 0, background: tok.cardBg, borderRadius: 12, padding: 4, border: `1px solid ${tok.borderSoft}` }}>
+      {pills.map(({ id, label, Icon, speed, tint, accent }) => {
+        const active = mode === id
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            style={{
+              flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: active ? tint : 'transparent',
+              color: active ? accent : tok.inkSoft,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'all 0.2s',
+              fontFamily: 'inherit',
+            }}
+          >
+            <Icon />
+            <span style={{ fontSize: 14, fontWeight: 500 }}>{label}</span>
+            <span style={{ fontSize: 10, opacity: 0.6 }}>{formatSpeedCap(speed, units)}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Segmented control (settings) ──────────────────────────────────────────────
+
+function SegControl({ options, value, onChange, tok, accent = '#3F6B5E' }: {
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (v: string) => void
+  tok: Tok
+  accent?: string
+}) {
+  return (
+    <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${tok.borderSoft}` }}>
+      {options.map((opt, i) => (
         <button
-          onClick={onDismiss}
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
           style={{
-            width: '100%', padding: '11px 0', borderRadius: 12,
-            background: 'rgba(45,122,108,0.15)', border: '1px solid rgba(45,122,108,0.25)',
-            color: '#2D7A6C', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            padding: '5px 12px',
+            background: value === opt.value ? `${accent}1e` : 'transparent',
+            border: 'none',
+            borderRight: i < options.length - 1 ? `1px solid ${tok.borderSoft}` : 'none',
+            color: value === opt.value ? accent : tok.inkSoft,
+            fontSize: 12,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap' as const,
           }}
         >
-          Let's go
+          {opt.label}
         </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Onboarding sheet ──────────────────────────────────────────────────────────
+
+function OnboardingSheet({ tok, onDismiss }: { tok: Tok; onDismiss: () => void }) {
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onDismiss}
+        style={{ position: 'absolute', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.2)' }}
+      />
+      {/* Ripple rings */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 91, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="340" height="340" viewBox="0 0 340 340" style={{ position: 'absolute' }}>
+          {[0, 1, 2].map(i => (
+            <circle
+              key={i}
+              cx="170" cy="170"
+              r={60 + i * 50}
+              fill="none"
+              stroke={MODE_COLOR.walking}
+              strokeWidth="1"
+              strokeDasharray="3 4"
+              className={`ripple-ring ripple-ring-${i}`}
+            />
+          ))}
+        </svg>
       </div>
+      {/* Sheet */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100,
+        background: tok.parchmentSheet, backdropFilter: 'blur(20px)',
+        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        padding: '20px 22px calc(32px + env(safe-area-inset-bottom))',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.04)',
+      }}>
+        {/* Handle */}
+        <div style={{ width: 36, height: 4, background: tok.handleBar, borderRadius: 2, margin: '0 auto 20px' }} />
+        {/* Eyebrow */}
+        <div style={{ fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color: MODE_COLOR.walking, fontFamily: 'ui-monospace, Menlo, monospace', marginBottom: 10 }}>
+          Emanare · To flow out
+        </div>
+        {/* Headline */}
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 30, lineHeight: 1.15, letterSpacing: '-0.4px', color: tok.text, marginBottom: 10 }}>
+          Your world,<br />within reach.
+        </div>
+        {/* Body */}
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 15, lineHeight: 1.55, color: tok.inkSoft, marginBottom: 20 }}>
+          You don't always know where you're going. Emanant draws what's reachable from where you are — so you can wander with intention.
+        </div>
+        {/* Permission card */}
+        <div
+          onClick={onDismiss}
+          style={{
+            background: tok.cardBg, borderRadius: 12, border: `1px solid ${tok.borderSoft}`,
+            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14,
+            cursor: 'pointer', marginBottom: 16,
+          }}
+        >
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(92,138,124,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C8A7C" strokeWidth="1.8" strokeLinecap="round">
+              <circle cx="12" cy="12" r="3"/>
+              <line x1="12" y1="2" x2="12" y2="5"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="5" y2="12"/>
+              <line x1="19" y1="12" x2="22" y2="12"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: tok.text }}>Use my location</div>
+            <div style={{ fontSize: 12, color: tok.inkSoft }}>Stays on your device. Always.</div>
+          </div>
+          <span style={{ color: tok.inkSoft, fontSize: 16 }}>›</span>
+        </div>
+        {/* Footer */}
+        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: tok.inkSoft, textAlign: 'center' }}>
+          No account · No destination · Nothing collected
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── Error view ────────────────────────────────────────────────────────────────
+
+function ErrorView({ tok, onRetry, onBrowse }: { tok: Tok; onRetry: () => void; onBrowse: () => void }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 50,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '0 36px', background: tok.parchmentSheet, backdropFilter: 'blur(8px)',
+    }}>
+      {/* Broken compass — strokes in inkSoft, readable on both themes */}
+      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" style={{ marginBottom: 24 }}>
+        <circle cx="36" cy="36" r="32" stroke={tok.inkSoft} strokeWidth="1" strokeDasharray="4 4"/>
+        <circle cx="36" cy="36" r="22" stroke={tok.inkSoft} strokeWidth="1.5"/>
+        <line x1="36" y1="14" x2="36" y2="36" stroke={tok.inkSoft} strokeWidth="2" strokeLinecap="round" opacity="0.4"/>
+        <line x1="36" y1="36" x2="52" y2="52" stroke={tok.inkSoft} strokeWidth="2" strokeLinecap="round" opacity="0.25"/>
+        <circle cx="36" cy="36" r="3" fill={tok.inkSoft}/>
+      </svg>
+      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.2, color: tok.text, textAlign: 'center', marginBottom: 12 }}>
+        We can't find<br />where you stand.
+      </div>
+      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 14, color: tok.inkSoft, textAlign: 'center', lineHeight: 1.5, marginBottom: 28 }}>
+        Emanant needs your location to draw your reach. Nothing leaves the device.
+      </div>
+      <button
+        onClick={onRetry}
+        style={{
+          padding: '12px 22px', borderRadius: 10, border: 'none', cursor: 'pointer',
+          background: MODE_COLOR.cycling, color: '#F2EBDD', fontSize: 14, fontWeight: 500,
+          fontFamily: 'inherit', marginBottom: 14,
+        }}
+      >
+        Use my location
+      </button>
+      <button
+        onClick={onBrowse}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: tok.inkSoft, textDecoration: 'underline', fontFamily: 'inherit' }}
+      >
+        Or browse a sample map →
+      </button>
     </div>
   )
 }
@@ -347,18 +592,9 @@ function OnboardingModal({ t, onDismiss }: { t: Tok; onDismiss: () => void }) {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MODES: { id: string; label: string }[] = [
-  { id: 'walking', label: 'Walk'  },
-  { id: 'cycling', label: 'Bike'  },
-  // { id: 'driving', label: 'Drive' },
+  { id: 'walking', label: 'Walk' },
+  { id: 'cycling', label: 'Bike' },
 ]
-
-const TIMES = [5, 10, 15, 20, 30]
-
-const MODE_COLOR: Record<string, string> = {
-  walking: '#D4882A',
-  cycling: '#2D7A6C',
-  driving: '#A0604A',
-}
 
 const EXCLUDE_TYPES = new Set(['country', 'state', 'region', 'country_subdivision', 'city'])
 const REACH_CAP     = 12
@@ -382,6 +618,9 @@ export default function App() {
   const lastFetchedRef    = useRef<[number, number] | null>(null)
   const firstFixRef       = useRef(true)
   const lastHeadingRef    = useRef<number | null>(null)
+  const dialDebounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const modeRef           = useRef('walking')
+  const darkRef           = useRef(false)
 
   const [themeMode,  setThemeMode]  = useState<'light' | 'system' | 'dark'>(
     () => (localStorage.getItem('theme') as 'light' | 'system' | 'dark') ?? 'system'
@@ -391,13 +630,13 @@ export default function App() {
   )
   const dark = themeMode === 'dark' || (themeMode === 'system' && systemDark)
 
-  // Stable ref so the init effect can read the initial style without being in its dep array
   const currentMapStyleRef = useRef(dark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11')
 
   const [mapReady,       setMapReady]       = useState(false)
   const [location,       setLocation]       = useState<[number, number] | null>(null)
   const [mode,           setMode]           = useState('walking')
   const [minutes,        setMinutes]        = useState(15)
+  const [dialMinutes,    setDialMinutes]    = useState(15)
   const [loading,        setLoading]        = useState(false)
   const [locError,       setLocError]       = useState(false)
   const [neighborhood,   setNeighborhood]   = useState<string | null>(null)
@@ -415,10 +654,17 @@ export default function App() {
   const [showSpaces,     setShowSpaces]     = useState(true)
   const [sharedLocation, setSharedLocation] = useState<[number, number] | null>(null)
   const [shareToast,     setShareToast]     = useState<'idle' | 'copied' | 'shared'>('idle')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [isoData,        setIsoData]        = useState<any>(null)
 
   const effectiveLocation = sharedLocation ?? location
 
   const t = useMemo(() => tok(dark), [dark])
+
+  // Keep refs in sync for use inside effects with stale closures
+  useEffect(() => { modeRef.current = mode }, [mode])
+  useEffect(() => { darkRef.current = dark }, [dark])
+  useEffect(() => { setDialMinutes(minutes) }, [minutes])
 
   // ── Parse shared URL on mount ─────────────────────────────────────────────
   useEffect(() => {
@@ -428,8 +674,8 @@ export default function App() {
     const coords = deobfuscateCoords(loc)
     if (!coords) return
     setSharedLocation(coords)
-    setLocation(coords)         // prime the map marker position
-    firstFixRef.current = false // prevent GPS first-fix from flying away from the shared point
+    setLocation(coords)
+    firstFixRef.current = false
     const m = params.get('m')
     if (m && ['walking', 'cycling'].includes(m)) setMode(m)
     const tParam = parseInt(params.get('t') ?? '', 10)
@@ -444,16 +690,9 @@ export default function App() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  // ── Apply theme to body + CSS custom properties for reach list ────────────
+  // ── Apply theme to body ───────────────────────────────────────────────────
   useEffect(() => {
     document.body.style.background = t.bodyBg
-    const r = document.documentElement
-    r.style.setProperty('--reach-bg',          t.bgBlur)
-    r.style.setProperty('--reach-border',      t.border)
-    r.style.setProperty('--reach-item-border', t.borderFaint)
-    r.style.setProperty('--reach-text',        t.text)
-    r.style.setProperty('--reach-arrow',       t.textMuted)
-    r.style.setProperty('--reach-dist',        t.subduedFg)
   }, [t])
 
   // ── Map style change when theme toggles ───────────────────────────────────
@@ -478,6 +717,13 @@ export default function App() {
     })
     map.setStyle(newStyle)
   }, [t.mapStyle, mapReady, mode, showSpaces])
+
+  // ── Update surveyor mark when mode or theme changes ───────────────────────
+  useEffect(() => {
+    const el = markerRef.current?.getElement()
+    if (!el) return
+    el.innerHTML = surveyorMarkSVG(MODE_COLOR[mode], t.markFill)
+  }, [mode, t.markFill])
 
   // ── Init map + GPS polling ────────────────────────────────────────────────
   useEffect(() => {
@@ -506,8 +752,9 @@ export default function App() {
         markerRef.current.setLngLat(lnglat)
       } else {
         const el = document.createElement('div')
-        el.className = 'user-dot'
-        markerRef.current = new mapboxgl.Marker({ element: el })
+        el.style.cssText = 'width:48px;height:48px;cursor:pointer'
+        el.innerHTML = surveyorMarkSVG(MODE_COLOR[modeRef.current], darkRef.current ? '#1a1916' : '#F2EBDD')
+        markerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
           .setLngLat(lnglat)
           .addTo(map)
       }
@@ -578,9 +825,10 @@ export default function App() {
     fetch(isoUrl)
       .then(r => { if (!r.ok) throw new Error('iso'); return r.json() })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then((isoData: any) => {
+      .then((data: any) => {
         if (cancelled) return
-        ;(map.getSource('isochrone') as mapboxgl.GeoJSONSource)?.setData(isoData)
+        ;(map.getSource('isochrone') as mapboxgl.GeoJSONSource)?.setData(data)
+        setIsoData(data)
         gtag('event', 'isochrone_rendered', {
           mode,
           duration_min: minutes,
@@ -588,19 +836,19 @@ export default function App() {
           city: city ?? undefined,
         })
 
-        const ring = isoData.features?.[0]?.geometry?.coordinates?.[0] as [number, number][] | undefined
+        const ring = data.features?.[0]?.geometry?.coordinates?.[0] as [number, number][] | undefined
         if (ring?.length) {
           const lngs = ring.map(([x]: [number, number]) => x)
           const lats = ring.map(([, y]: [number, number]) => y)
           map.fitBounds(
             [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-            { padding: { top: 60, bottom: panelCollapsed ? 60 : 170, left: 20, right: 20 }, duration: 800 }
+            { padding: { top: 80, bottom: panelCollapsed ? 60 : 300, left: 20, right: 20 }, duration: 800 }
           )
         }
 
-        const isoRadius  = isochroneRadius([lng, lat], isoData)
+        const isoRadius  = isochroneRadius([lng, lat], data)
         const nBoundary  = isoRadius < 2_000 ? 0 : 4
-        const samples    = isoSamplePoints([lng, lat], isoData, nBoundary)
+        const samples    = isoSamplePoints([lng, lat], data, nBoundary)
         const queryRadius = Math.min(Math.ceil(isoRadius * 0.7), 10_000)
 
         const tqRequests = samples.map(([qLng, qLat]) =>
@@ -612,7 +860,7 @@ export default function App() {
 
         return Promise.all(tqRequests).then(responses => {
           if (cancelled) return
-          const isoGeom = isoData.features?.[0]?.geometry
+          const isoGeom = data.features?.[0]?.geometry
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const allFeatures = responses.flatMap((r: any) => r.features ?? [])
 
@@ -651,11 +899,8 @@ export default function App() {
     return () => { cancelled = true }
   }, [mapReady, effectiveLocation, mode, minutes])
 
-  // ── Compass class + reset ─────────────────────────────────────────────────
+  // ── Compass rotation reset ────────────────────────────────────────────────
   useEffect(() => {
-    const el = markerRef.current?.getElement()
-    if (!el) return
-    el.classList.toggle('user-dot--has-compass', compassEnabled)
     if (!compassEnabled) {
       markerRef.current?.setRotation(0)
       setHeading(null)
@@ -696,9 +941,9 @@ export default function App() {
     }
   }
 
-  function setTheme(mode: 'light' | 'system' | 'dark') {
-    setThemeMode(mode)
-    localStorage.setItem('theme', mode)
+  function setTheme(m: 'light' | 'system' | 'dark') {
+    setThemeMode(m)
+    localStorage.setItem('theme', m)
   }
 
   function toggleUnits() {
@@ -726,9 +971,50 @@ export default function App() {
     gtag('event', 'onboarding_dismissed', {})
   }
 
+  function handleDialChange(v: number) {
+    setDialMinutes(v)
+    if (dialDebounceRef.current) clearTimeout(dialDebounceRef.current)
+    dialDebounceRef.current = setTimeout(() => {
+      setMinutes(v)
+      gtag('event', 'duration_changed', { mode, duration_min: v })
+    }, 250)
+  }
+
+  function handleDialCommit(v: number) {
+    setDialMinutes(v)
+    if (dialDebounceRef.current) clearTimeout(dialDebounceRef.current)
+    setMinutes(v)
+    gtag('event', 'duration_changed', { mode, duration_min: v })
+  }
+
+  function handleModeChange(m: string) {
+    setMode(m)
+    gtag('event', 'mode_changed', { mode: m, duration_min: minutes })
+  }
+
+  function requestLocation() {
+    const geoOpts: PositionOptions = { enableHighAccuracy: true, timeout: 10_000 }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lnglat: [number, number] = [coords.longitude, coords.latitude]
+        setLocation(lnglat)
+        setLocError(false)
+        firstFixRef.current = true
+      },
+      () => setLocError(true),
+      geoOpts
+    )
+  }
+
+  function browseAsGuest() {
+    setSharedLocation([-0.1276, 51.5074])
+    setLocError(false)
+    firstFixRef.current = false
+  }
+
   function dismissSharedLocation() {
     setSharedLocation(null)
-    firstFixRef.current = true  // re-enable GPS first-fix flyTo
+    firstFixRef.current = true
     window.history.replaceState({}, '', window.location.pathname)
     gtag('event', 'shared_location_dismissed', {})
   }
@@ -737,9 +1023,15 @@ export default function App() {
     if (!effectiveLocation) return
     const [lng, lat] = effectiveLocation
     const url = `${window.location.origin}${window.location.pathname}?loc=${obfuscateCoords(lat, lng)}&m=${mode}&t=${minutes}`
+    const reachR = isoData ? isochroneRadius(effectiveLocation, isoData) : null
+    const reachStr = reachR ? formatDistance(reachR, units) : null
+    const modeLabel = mode === 'walking' ? 'walking' : 'cycling'
+    const title = reachStr && neighborhood
+      ? `I can reach ${reachStr} in ${minutes} min ${modeLabel} from ${neighborhood} — emanant.app`
+      : 'My reachable area — Emanant'
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'My reachable area — Emanant', url })
+        await navigator.share({ title, url })
         setShareToast('shared')
       } catch { /* user cancelled */ }
     } else {
@@ -764,374 +1056,341 @@ export default function App() {
   }
 
   const color = MODE_COLOR[mode]
-  const S = makeStyles(t)
+  const reachRadius = effectiveLocation && isoData ? isochroneRadius(effectiveLocation, isoData) : null
+
+  const sheetHeight = panelCollapsed
+    ? 'calc(28px + env(safe-area-inset-bottom))'
+    : settingsOpen
+      ? 'calc(420px + env(safe-area-inset-bottom))'
+      : 'calc(290px + env(safe-area-inset-bottom))'
 
   return (
-    <div style={{ height: '100%', position: 'relative', ['--mapctrl-bottom' as any]: panelCollapsed
-        ? 'calc(40px + env(safe-area-inset-bottom))'
-        : settingsOpen
-          ? 'calc(270px + env(safe-area-inset-bottom))'
-          : 'calc(165px + env(safe-area-inset-bottom))' }}>
+    <div style={{
+      height: '100%', position: 'relative',
+      ['--mapctrl-bottom' as string]: listExpanded
+        ? 'calc(100vh + 40px)'
+        : panelCollapsed
+          ? 'calc(28px + env(safe-area-inset-bottom))'
+          : settingsOpen
+            ? 'calc(420px + env(safe-area-inset-bottom))'
+            : 'calc(290px + env(safe-area-inset-bottom))',
+    }}>
 
       {/* Map */}
-      <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+      <div
+        ref={containerRef}
+        style={{
+          position: 'absolute', inset: 0,
+          opacity: listExpanded ? 0.35 : 1,
+          transition: 'opacity 0.3s ease-out',
+        }}
+      />
 
-      {/* Top-left: neighborhood pill + reach list */}
-      {neighborhood && (
-        <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>
-          <div
-            onClick={() => { if (!reachList.length) return; if (!listExpanded) gtag('event', 'reach_list_expanded', {}); setListExpanded(x => !x) }}
-            style={{ ...S.pill, position: 'relative', cursor: reachList.length ? 'pointer' : 'default', gap: 6 }}
-          >
+      {/* ── Top overlays ── */}
+
+      {/* Place chip */}
+      {neighborhood && effectiveLocation && (
+        <div style={{
+          position: 'absolute', top: 14, left: 14, right: 14, zIndex: 10,
+          background: t.placeChipBg, backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(0,0,0,0.04)', borderRadius: 12, padding: '10px 14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: t.text, lineHeight: 1 }}>
             {neighborhood}
-            {reachList.length > 0 && (
-              <span style={{ fontSize: 11, opacity: 0.45, display: 'inline-block', transform: listExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
-                ›
-              </span>
-            )}
-          </div>
-
-          {listExpanded && reachList.length > 0 && (
-            <div className="reach-list">
-              {reachList.map(item => (
-                <div key={item.name} className="reach-item">
-                  <span className="reach-arrow">{item.arrow} {item.cardinal}</span>
-                  <span className="reach-name">{item.name}</span>
-                  <span className="reach-dist">{formatDistance(item.distanceM, units)}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          </span>
+          <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, letterSpacing: '0.5px' }}>
+            {formatLatLon(effectiveLocation)}
+          </span>
         </div>
       )}
 
-      {/* Top-right: compass heading */}
+      {/* Neighborhoods pill */}
+      {reachList.length > 0 && (
+        <button
+          onClick={() => { if (!listExpanded) gtag('event', 'reach_list_expanded', {}); setListExpanded(x => !x) }}
+          style={{
+            position: 'absolute', top: 66, left: 14, zIndex: 10,
+            background: t.placeChipBg, backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(0,0,0,0.04)', borderRadius: 999, padding: '7px 14px 7px 12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            display: 'flex', alignItems: 'center', gap: 7,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+          <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 12, color: t.inkSoft }}>
+            {reachList.length} neighborhood{reachList.length !== 1 ? 's' : ''}
+          </span>
+          <span style={{ fontSize: 11, color: t.inkSoft, display: 'inline-block', transform: listExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            ↑
+          </span>
+        </button>
+      )}
+
+      {/* Compass heading pill */}
       {compassEnabled && heading !== null && (
-        <div style={{ ...S.pill, top: 16, right: 16 }}>
+        <div style={{
+          position: 'absolute', top: 66, right: 14, zIndex: 10,
+          background: t.placeChipBg, backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(0,0,0,0.04)', borderRadius: 999, padding: '7px 14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: t.inkSoft,
+        }}>
           ↑ {toCardinal(heading).cardinal}
         </div>
       )}
 
-      {/* Top-center: loading pill */}
+      {/* Loading pill */}
       {loading && (
-        <div style={{ ...S.pill, top: 16, left: '50%', transform: 'translateX(-50%)', gap: 8 }}>
+        <div style={{
+          position: 'absolute', top: 66, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
+          background: t.placeChipBg, backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(0,0,0,0.04)', borderRadius: 999, padding: '7px 14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
           <div className="loading-dot" />
-          <span>Calculating…</span>
+          <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: t.inkSoft }}>Calculating…</span>
         </div>
       )}
 
-      {/* Location denied banner */}
-      {locError && (
-        <div style={S.banner}>
-          Location access denied — enable it to see your area
-        </div>
+      {/* Places drawer */}
+      {listExpanded && (
+        <>
+          <div
+            onClick={() => setListExpanded(false)}
+            style={{ position: 'absolute', inset: 0, zIndex: 19 }}
+          />
+          <div style={{
+            position: 'absolute', top: 60, left: 0, right: 0, bottom: 0, zIndex: 20,
+            background: t.parchmentSheet, backdropFilter: 'blur(20px)',
+            borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.04)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Handle */}
+            <div style={{ flexShrink: 0, padding: '14px 22px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div
+                onClick={() => setListExpanded(false)}
+                style={{ width: 36, height: 4, background: t.handleBar, borderRadius: 2, margin: '0 auto', cursor: 'pointer' }}
+              />
+              <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, color: t.text, letterSpacing: '-0.3px', lineHeight: 1.2 }}>
+                Within reach
+              </div>
+              <div style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: 12, color: t.inkSoft }}>
+                {reachList.length} neighborhood{reachList.length !== 1 ? 's' : ''} within {minutes} min {mode === 'walking' ? 'walk' : 'bike'}
+              </div>
+            </div>
+            {/* List */}
+            <div style={{ flex: 1, overflowY: 'auto', paddingTop: 8 }}>
+              {reachList.map(item => (
+                <div
+                  key={item.name}
+                  style={{
+                    display: 'grid', gridTemplateColumns: '32px 32px 1fr auto auto',
+                    gap: 10, padding: '14px 22px',
+                    borderBottom: `1px solid ${t.borderFaint}`,
+                    alignItems: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: 18, color, textAlign: 'center' }}>{item.arrow}</span>
+                  <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 10, color: t.inkSoft, letterSpacing: '0.6px' }}>{item.cardinal}</span>
+                  <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                  <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, whiteSpace: 'nowrap' }}>{formatDistance(item.distanceM, units)}</span>
+                  <span style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: 11, color: t.inkSoft, whiteSpace: 'nowrap' }}>{walkTimeMin(item.distanceM, mode)} min</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Shared location banner */}
       {sharedLocation && (
         <div style={{
-          ...S.banner,
+          position: 'absolute', top: 14, left: 14, right: 14, zIndex: 11,
           background: dark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)',
           border: '1px solid rgba(99,102,241,0.25)',
+          borderRadius: 12, padding: '10px 14px',
           color: dark ? '#a5b4fc' : '#4f46e5',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          textAlign: 'left',
+          fontSize: 13,
         }}>
           <span>Viewing a shared location</span>
           <button
             onClick={dismissSharedLocation}
-            style={{
-              background: 'none', border: 'none', color: 'inherit', cursor: 'pointer',
-              fontSize: 13, padding: '0 0 0 12px', fontFamily: 'inherit', opacity: 0.75,
-              whiteSpace: 'nowrap',
-            }}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 13, padding: '0 0 0 12px', fontFamily: 'inherit', opacity: 0.75, whiteSpace: 'nowrap' }}
           >
             Use my location ×
           </button>
         </div>
       )}
 
+      {/* Location error — full-screen calm view */}
+      {locError && !sharedLocation && (
+        <ErrorView tok={t} onRetry={requestLocation} onBrowse={browseAsGuest} />
+      )}
+
       {/* Onboarding */}
-      {!onboarded && <OnboardingModal t={t} onDismiss={dismissOnboarding} />}
+      {!onboarded && <OnboardingSheet tok={t} onDismiss={dismissOnboarding} />}
 
-      {/* Bottom sheet */}
-      <div style={S.sheet}>
+      {/* ── Bottom sheet ── */}
+      {!locError && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          background: t.parchmentSheet, backdropFilter: 'blur(12px)',
+          borderTop: '1px solid rgba(0,0,0,0.05)',
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          padding: `14px 18px calc(${panelCollapsed ? 10 : 28}px + env(safe-area-inset-bottom))`,
+          zIndex: 10,
+          transition: 'padding 0.2s ease',
+          minHeight: sheetHeight,
+          boxSizing: 'border-box' as const,
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.04)',
+        }}>
 
-        {/* Handle row with settings gear */}
-        <div
-          style={{ position: 'relative', marginBottom: panelCollapsed ? 0 : 18, cursor: 'pointer' }}
-          onClick={() => setPanelCollapsed(x => !x)}
-          aria-label={panelCollapsed ? 'Expand panel' : 'Collapse panel'}
-        >
-          <div style={S.handle} />
+          {/* Drag handle */}
+          <div
+            onClick={() => setPanelCollapsed(x => !x)}
+            style={{ cursor: 'pointer', paddingBottom: panelCollapsed ? 0 : 14 }}
+            aria-label={panelCollapsed ? 'Expand panel' : 'Collapse panel'}
+          >
+            <div style={{ width: 36, height: 4, background: t.handleBar, borderRadius: 2, margin: '0 auto' }} />
+          </div>
+
           {!panelCollapsed && (
-            <span style={{
-              position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 18, letterSpacing: '0.1em', color: t.textMuted, userSelect: 'none', pointerEvents: 'none',
-            }}>
-              Emanant
-            </span>
-          )}
-          {!panelCollapsed && (
-            <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <button
-                onClick={e => { e.stopPropagation(); handleShare() }}
-                disabled={!effectiveLocation}
-                aria-label="Share isochrone"
-                style={{
-                  background: 'none', border: 'none',
-                  color: shareToast !== 'idle' ? '#2D7A6C' : t.gearColor,
-                  cursor: effectiveLocation ? 'pointer' : 'default',
-                  padding: '4px 6px', lineHeight: 1,
-                  display: 'flex', alignItems: 'center',
-                  opacity: effectiveLocation ? 1 : 0.3,
-                  transition: 'color 0.2s',
-                }}
-              >
-                {shareToast !== 'idle'
-                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                  : <ShareIcon />
-                }
-              </button>
-              <button onClick={e => { e.stopPropagation(); if (!settingsOpen) gtag('event', 'settings_opened', {}); setSettingsOpen(x => !x) }} style={S.gearBtn} aria-label="Settings">
-                <SettingsIcon />
-              </button>
-            </div>
+            <>
+              {/* Reach reading row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                  <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 28, color: t.text, letterSpacing: '-0.3px', lineHeight: 1 }}>
+                    {dialMinutes}
+                    <span style={{ fontSize: 18, color: t.inkSoft, marginLeft: 2 }}>min</span>
+                  </div>
+                  {reachRadius !== null && reachRadius > 0 && (
+                    <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                      ≈ {formatDistance(reachRadius, units)} reach
+                    </div>
+                  )}
+                </div>
+                {/* Share button */}
+                <button
+                  onClick={handleShare}
+                  disabled={!effectiveLocation}
+                  aria-label="Share isochrone"
+                  style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: shareToast !== 'idle' ? `${color}22` : t.cardBg,
+                    border: `1px solid ${t.borderSoft}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: effectiveLocation ? 'pointer' : 'default',
+                    opacity: effectiveLocation ? 1 : 0.3,
+                    color: shareToast !== 'idle' ? color : t.text,
+                    transition: 'all 0.2s',
+                    flexShrink: 0,
+                  }}
+                >
+                  {shareToast !== 'idle'
+                    ? <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    : <ShareIconSm />
+                  }
+                </button>
+              </div>
+
+              {/* Time dial */}
+              <TimeDial
+                value={dialMinutes}
+                accent={color}
+                tok={t}
+                onChange={handleDialChange}
+                onCommit={handleDialCommit}
+              />
+
+              {/* Mode segmented bar */}
+              <div style={{ marginTop: 16 }}>
+                <ModePillBar mode={mode} units={units} tok={t} onChange={handleModeChange} />
+              </div>
+
+              {/* Settings collapsible */}
+              <div style={{ marginTop: 14, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 12 }}>
+                <div
+                  onClick={() => { if (!settingsOpen) gtag('event', 'settings_opened', {}); setSettingsOpen(x => !x) }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={t.inkSoft} strokeWidth="1.3">
+                      <circle cx="8" cy="8" r="2"/>
+                      <path d="M 8 1 L 8 3 M 8 13 L 8 15 M 1 8 L 3 8 M 13 8 L 15 8 M 3 3 L 4.5 4.5 M 11.5 11.5 L 13 13 M 3 13 L 4.5 11.5 M 11.5 4.5 L 13 3"/>
+                    </svg>
+                    <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 13, color: t.inkSoft }}>Settings</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: t.inkSoft, display: 'inline-block', transform: settingsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>⌄</span>
+                </div>
+
+                {settingsOpen && (
+                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Appearance */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12, color: t.inkSoft }}>Appearance</span>
+                      <SegControl tok={t}
+                        options={[{ value: 'light', label: 'Light' }, { value: 'system', label: 'Auto' }, { value: 'dark', label: 'Dark' }]}
+                        value={themeMode}
+                        onChange={v => setTheme(v as 'light' | 'system' | 'dark')}
+                      />
+                    </div>
+                    {/* Units */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12, color: t.inkSoft }}>Units</span>
+                      <SegControl tok={t}
+                        options={[{ value: 'metric', label: 'km' }, { value: 'imperial', label: 'mi' }]}
+                        value={units}
+                        onChange={v => { if (v !== units) toggleUnits() }}
+                      />
+                    </div>
+                    {/* Live compass */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12, color: t.inkSoft }}>Live compass</span>
+                      <SegControl tok={t}
+                        options={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
+                        value={compassEnabled ? 'on' : 'off'}
+                        onChange={v => { if (v === 'on' && !compassEnabled) requestCompass(); else if (v === 'off') setCompassEnabled(false) }}
+                      />
+                    </div>
+                    {/* Spaces */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12, color: t.inkSoft }}>Spaces</span>
+                      <SegControl tok={t}
+                        options={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
+                        value={showSpaces ? 'on' : 'off'}
+                        onChange={v => { if ((v === 'on') !== showSpaces) toggleSpaces() }}
+                      />
+                    </div>
+                    {/* Footer */}
+                    <div style={{ marginTop: 4, fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: t.inkSoft, textAlign: 'center', lineHeight: 1.5 }}>
+                      No account · No data leaves this device
+                    </div>
+                    <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, textAlign: 'center' }}>
+                      <a
+                        href="https://docs.google.com/forms/d/e/1FAIpQLScctFaGMLcVCsBJFx93rlDqFJweH5F_o8_0vNqI0rvB1fHd1w/viewform?usp=sharing&ouid=100968712771359852520"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => gtag('event', 'feedback_clicked', {})}
+                        style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        Share feedback
+                      </a>
+                      <span style={{ margin: '0 6px' }}>·</span>
+                      © {new Date().getFullYear()} Emanant.app
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
-
-        {!panelCollapsed && (
-          <>
-            {/* Settings section */}
-            {settingsOpen && (
-              <>
-              <div style={S.settingsRow}>
-                {/* Appearance */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Appearance</span>
-                  <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${t.btnBorder}` }}>
-                    {(['light', 'system', 'dark'] as const).map((m, i) => (
-                      <button
-                        key={m}
-                        onClick={() => setTheme(m)}
-                        style={{
-                          padding: '5px 10px',
-                          background: themeMode === m ? 'rgba(45,122,108,0.18)' : t.btnBg,
-                          border: 'none',
-                          borderRight: i < 2 ? `1px solid ${t.btnBorder}` : 'none',
-                          color: themeMode === m ? '#2D7A6C' : t.btnText,
-                          fontSize: 12,
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        {m === 'system' ? 'Auto' : m.charAt(0).toUpperCase() + m.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Separator */}
-                <div style={{ width: 1, height: 20, background: t.borderFaint }} />
-
-                {/* Units */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Units</span>
-                  <button onClick={toggleUnits} style={S.settingsBtn}>
-                    {units === 'metric' ? 'km' : 'mi'}
-                  </button>
-                </div>
-
-                {/* Separator */}
-                <div style={{ width: 1, height: 20, background: t.borderFaint }} />
-
-                {/* Compass */}
-                {!compassEnabled
-                  ? <button onClick={requestCompass} style={S.settingsBtn}>Enable compass</button>
-                  : <span style={{ fontSize: 12, color: t.subduedFg }}>Compass active</span>
-                }
-
-                {/* Separator */}
-                <div style={{ width: 1, height: 20, background: t.borderFaint }} />
-
-                {/* Spaces layer */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ ...S.sectionLabel, marginBottom: 0 }}>Spaces</span>
-                  <button onClick={toggleSpaces} style={S.settingsBtn}>
-                    {showSpaces ? 'On' : 'Off'}
-                  </button>
-                </div>
-              </div>
-              </>
-            )}
-
-            {/* Duration */}
-            <div style={S.row}>
-              {TIMES.map((t_) => (
-                <button key={t_} onClick={() => { setMinutes(t_); gtag('event', 'duration_changed', { mode, duration_min: t_ }) }} style={minuteBtn(t_ === minutes, color, t)}>
-                  {t_}m
-                </button>
-              ))}
-            </div>
-
-            {/* Travel mode */}
-            <div style={{ marginTop: 16 }} />
-            <div style={S.row}>
-              {MODES.map((m) => {
-                const Icon = MODE_ICONS[m.id]
-                return (
-                  <button key={m.id} onClick={() => { setMode(m.id); gtag('event', 'mode_changed', { mode: m.id, duration_min: minutes }) }} style={modeBtn(m.id === mode, MODE_COLOR[m.id], t)}>
-                    <Icon />
-                    <span>{m.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, paddingTop: 6, paddingBottom: 2, textAlign: 'center' }}>
-              <a
-                href="https://docs.google.com/forms/d/e/1FAIpQLScctFaGMLcVCsBJFx93rlDqFJweH5F_o8_0vNqI0rvB1fHd1w/viewform?usp=sharing&ouid=100968712771359852520"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => gtag('event', 'feedback_clicked', {})}
-                style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}
-              >
-                Share feedback
-              </a>
-              <span style={{ margin: '0 6px' }}>·</span>
-              © {new Date().getFullYear()} Emanant.app
-            </div>
-          </>
-        )}
-      </div>
+      )}
     </div>
   )
-}
-
-// ── Styles (theme-aware) ──────────────────────────────────────────────────────
-
-function makeStyles(t: Tok) {
-  return {
-    pill: {
-      position: 'absolute' as const,
-      background: t.bgBlur,
-      backdropFilter: 'blur(12px)',
-      border: `1px solid ${t.border}`,
-      borderRadius: 20,
-      padding: '6px 14px',
-      fontSize: 13,
-      color: t.text,
-      zIndex: 10,
-      display: 'flex',
-      alignItems: 'center',
-      whiteSpace: 'nowrap' as const,
-    },
-    banner: {
-      position: 'absolute' as const,
-      top: 16, left: 16, right: 16,
-      background: t.bannerBg,
-      border: `1px solid ${t.bannerBorder}`,
-      borderRadius: 12,
-      padding: '10px 14px',
-      fontSize: 13,
-      color: t.bannerText,
-      zIndex: 10,
-      textAlign: 'center' as const,
-    },
-    sheet: {
-      position: 'absolute' as const,
-      bottom: 0, left: 0, right: 0,
-      background: t.bg,
-      backdropFilter: 'blur(24px)',
-      borderTop: `1px solid ${t.borderFaint}`,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: '12px 20px',
-      paddingBottom: 'calc(2px + env(safe-area-inset-bottom))',
-      zIndex: 10,
-      transition: 'padding 0.2s ease',
-    },
-    handle: {
-      width: 36, height: 4,
-      background: t.handle,
-      borderRadius: 2,
-      margin: '0 auto',
-    },
-    gearBtn: {
-      background: 'none',
-      border: 'none',
-      color: t.gearColor,
-      cursor: 'pointer',
-      padding: '4px 2px',
-      lineHeight: 1,
-      display: 'flex',
-      alignItems: 'center',
-    },
-    settingsRow: {
-      display: 'flex' as const,
-      alignItems: 'center',
-      flexWrap: 'wrap' as const,
-      gap: 10,
-      paddingBottom: 14,
-      marginBottom: 14,
-      borderBottom: `1px solid ${t.borderSep}`,
-    },
-    settingsBtn: {
-      padding: '5px 12px',
-      borderRadius: 10,
-      border: `1px solid ${t.btnBorder}`,
-      background: t.btnBg,
-      color: t.btnText,
-      fontSize: 12,
-      cursor: 'pointer',
-      fontFamily: 'inherit',
-    },
-    sectionLabel: {
-      fontSize: 11,
-      fontWeight: 700 as const,
-      color: t.textMuted,
-      textTransform: 'none' as const,
-      letterSpacing: '0.8px',
-      marginBottom: 10,
-    },
-    row: {
-      display: 'flex' as const,
-      gap: 8,
-    },
-  }
-}
-
-function minuteBtn(active: boolean, color: string, t: Tok): React.CSSProperties {
-  return {
-    flex: 1,
-    padding: '11px 0',
-    borderRadius: 14,
-    border: `1px solid ${active ? color : t.btnBorder}`,
-    background: active ? `${color}22` : t.btnBg,
-    color: active ? color : t.btnText,
-    fontSize: 14,
-    fontWeight: active ? 700 : 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'all 0.15s',
-  }
-}
-
-function modeBtn(active: boolean, color: string, t: Tok): React.CSSProperties {
-  return {
-    flex: 1,
-    padding: '12px 0',
-    borderRadius: 14,
-    border: `1px solid ${active ? color : t.btnBorder}`,
-    background: active ? `${color}22` : t.btnBg,
-    color: active ? color : t.btnText,
-    fontSize: 13,
-    fontWeight: active ? 700 : 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    transition: 'all 0.15s',
-  }
 }
