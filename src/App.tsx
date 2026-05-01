@@ -569,13 +569,13 @@ function OnboardingSheet({ tok, onDismiss }: { tok: Tok; onDismiss: () => void }
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 500, color: tok.text }}>Use my location</div>
-            <div style={{ fontSize: 12, color: tok.inkSoft }}>Stays on your device. Always.</div>
+            <div style={{ fontSize: 12, color: tok.inkSoft }}>Your precise location stays on this device.</div>
           </div>
           <span style={{ color: tok.inkSoft, fontSize: 16 }}>›</span>
         </div>
         {/* Footer */}
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: tok.inkSoft, textAlign: 'center' }}>
-          No account · No destination · Nothing collected
+          No account · No personal data · Anonymous analytics
         </div>
       </div>
     </>
@@ -603,7 +603,7 @@ function ErrorView({ tok, onRetry, onBrowse }: { tok: Tok; onRetry: () => void; 
         We can't find<br />where you stand.
       </div>
       <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 14, color: tok.inkSoft, textAlign: 'center', lineHeight: 1.5, marginBottom: 28 }}>
-        Emanant needs your location to draw your reach. Nothing leaves the device.
+        Emanant needs your location to draw your reach. Your precise location stays on this device.
       </div>
       <button
         onClick={onRetry}
@@ -1106,10 +1106,10 @@ export default function App() {
       ['--mapctrl-bottom' as string]: listExpanded
         ? 'calc(100vh + 40px)'
         : panelCollapsed
-          ? 'calc(28px + env(safe-area-inset-bottom))'
+          ? 'calc(33px + env(safe-area-inset-bottom))'
           : settingsOpen
-            ? 'calc(460px + env(safe-area-inset-bottom))'
-            : 'calc(245px + env(safe-area-inset-bottom))',
+            ? 'calc(465px + env(safe-area-inset-bottom))'
+            : 'calc(250px + env(safe-area-inset-bottom))',
     }}>
 
       {/* Map */}
@@ -1405,7 +1405,7 @@ export default function App() {
                     </div>
                     {/* Footer */}
                     <div style={{ marginTop: 4, fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: t.inkSoft, textAlign: 'center', lineHeight: 1.5 }}>
-                      No account · No data leaves this device
+                      No account · No personal data collected
                     </div>
                     <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, textAlign: 'center' }}>
                       <a

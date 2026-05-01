@@ -22,6 +22,7 @@ body {
 .mapboxgl-ctrl-bottom-left,
 .mapboxgl-ctrl-bottom-right {
   bottom: var(--mapctrl-bottom, 290px) !important;
+  align-items: flex-end !important;
 }
 
 /* Surveyor mark — outer ring pulse */
