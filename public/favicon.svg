@@ -1,9 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#0f0f1a"/>
-  <!-- Radiating arcs from bottom-center origin point -->
-  <circle cx="16" cy="22" r="3"  stroke="#FF6B35" stroke-width="1.5" stroke-dasharray="19 100" stroke-dashoffset="-3"/>
-  <circle cx="16" cy="22" r="7"  stroke="#FF6B35" stroke-width="1.5" stroke-dasharray="22 100" stroke-dashoffset="-9" opacity="0.7"/>
-  <circle cx="16" cy="22" r="11" stroke="#FF6B35" stroke-width="1.5" stroke-dasharray="24 100" stroke-dashoffset="-17" opacity="0.4"/>
-  <!-- Origin dot -->
-  <circle cx="16" cy="22" r="2" fill="#FF6B35"/>
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="ic"><rect width="100" height="100" rx="22"/></clipPath>
+  </defs>
+  <style>
+    :root{--bg:#FBF6E9;--mf:#F2EBDD;--i1:rgba(201,123,63,.07);--i2:rgba(201,123,63,.10);--i3:rgba(201,123,63,.14)}
+    @media(prefers-color-scheme:dark){:root{--bg:#0e0d0a;--mf:#1a1916;--i1:rgba(201,123,63,.12);--i2:rgba(201,123,63,.17);--i3:rgba(201,123,63,.22)}}
+  </style>
+  <g clip-path="url(#ic)">
+    <rect width="100" height="100" fill="var(--bg)"/>
+    <!-- outer isochrone ~30 min -->
+    <path fill="var(--i1)" stroke="#C97B3F" stroke-width=".8"
+      d="M92,50 C92,65 80.8,76.1 69,82.9 C57.2,89.7 41.6,96 28,88.1 C14.4,80.2 10,64.3 10,50 C10,35.7 14.4,19.8 28,11.9 C41.6,4 57.2,10.3 69,17.1 C80.8,23.9 92,35 92,50Z"/>
+    <!-- middle isochrone ~15 min -->
+    <path fill="var(--i2)" stroke="#C97B3F" stroke-width=".8"
+      d="M80,50 C80,60.7 71.8,68.6 63.5,73.4 C55.2,78.2 43.9,83.4 34,77.7 C24.1,72 22,60 22,50 C22,40 24.1,28 34,22.3 C43.9,16.6 55.2,21.8 63.5,26.6 C71.8,31.4 80,39.3 80,50Z"/>
+    <!-- inner isochrone ~5 min -->
+    <path fill="var(--i3)" stroke="#C97B3F" stroke-width=".8"
+      d="M68,50 C68,56.4 62.9,61 58,63.9 C53.1,66.8 46.4,69.9 40.5,66.5 C34.6,63.1 33,56.1 33,50 C33,43.9 34.6,36.9 40.5,33.5 C46.4,30.1 53.1,33.2 58,36.1 C62.9,39 68,43.6 68,50Z"/>
+    <!-- surveyor outer ring -->
+    <circle cx="50" cy="50" r="10" fill="none" stroke="#C97B3F" stroke-width=".6" opacity=".5"/>
+    <!-- surveyor main circle -->
+    <circle cx="50" cy="50" r="7.5" fill="var(--mf)" stroke="#C97B3F" stroke-width="1.2"/>
+    <!-- center dot -->
+    <circle cx="50" cy="50" r="3.8" fill="#C97B3F"/>
+    <!-- north triangle -->
+    <polygon points="50,41 48.3,43.8 51.7,43.8" fill="#C97B3F"/>
+  </g>
 </svg>

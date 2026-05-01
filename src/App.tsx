@@ -279,32 +279,68 @@ function surveyorMarkSVG(color: string, fillColor: string): string {
 
 function WalkIconSm() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="9" cy="3" r="1.5"/>
-      <path d="M 9 5 L 7 9 L 5 13"/>
-      <path d="M 9 5 L 12 8 L 11 13"/>
-      <path d="M 7 9 L 4 8"/>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+      stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* Head */}
+      <circle cx="9" cy="2.5" r="1.25"/>
+      {/* Torso */}
+      <path d="M 9 4 L 8 8"/>
+      {/* Left arm (forward swing) */}
+      <path d="M 8.5 5.5 L 6 7"/>
+      {/* Right arm (back swing) */}
+      <path d="M 8.5 5.5 L 11 6.5"/>
+      {/* Left leg (forward) */}
+      <path d="M 8 8 L 6 11 L 5 14"/>
+      {/* Right leg (back) */}
+      <path d="M 8 8 L 10 11 L 12 13"/>
     </svg>
   )
 }
 
 function BikeIconSm() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="4" cy="11" r="3"/>
-      <circle cx="12" cy="11" r="3"/>
-      <path d="M 4 11 L 7 5 L 11 5 L 12 11"/>
-      <path d="M 7 5 L 9 3"/>
+    <svg width="16" height="14" viewBox="0 0 18 16" fill="none"
+      stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <circle cx="3.5"  cy="11" r="2.5"/>  {/* rear wheel */}
+      <circle cx="14.5" cy="11" r="2.5"/>  {/* front wheel */}
+      <path d="M 3.5 11 L 8 11"/>          {/* chainstay */}
+      <path d="M 8 11 L 7.5 5"/>           {/* seat tube */}
+      <path d="M 7.5 5 L 12 5.5"/>         {/* top tube */}
+      <path d="M 12 7.5 L 8 11"/>          {/* down tube */}
+      <path d="M 12 5.5 L 12 7.5"/>        {/* head tube */}
+      <path d="M 12 7.5 L 14.5 11"/>       {/* fork */}
+      <path d="M 7.5 5 L 3.5 11"/>         {/* seat stay */}
+      <path d="M 7.5 5 L 7.5 3.5"/>        {/* seat post */}
+      <path d="M 6 3.5 L 9 3.5"/>          {/* saddle */}
+      <path d="M 12 5.5 L 12.5 3.5"/>      {/* stem */}
+      <path d="M 11.2 3.5 L 13.8 3.5"/>    {/* handlebar */}
     </svg>
   )
 }
 
+
 function ShareIconSm() {
   return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M 8 2 L 8 11"/>
-      <path d="M 5 5 L 8 2 L 11 5"/>
-      <path d="M 3 9 L 3 13 L 13 13 L 13 9"/>
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* Shaft */}
+      <line x1="8" y1="2.5" x2="8" y2="10.5" />
+      {/* Arrowhead — tighter, more balanced */}
+      <polyline points="5.5,5 8,2.5 10.5,5" />
+      {/* Tray — slightly inset, with rounded feel */}
+      <path d="M3.5 9.5 L3.5 13 L12.5 13 L12.5 9.5" />
     </svg>
   )
 }
