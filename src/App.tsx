@@ -1072,8 +1072,8 @@ export default function App() {
         : panelCollapsed
           ? 'calc(28px + env(safe-area-inset-bottom))'
           : settingsOpen
-            ? 'calc(420px + env(safe-area-inset-bottom))'
-            : 'calc(290px + env(safe-area-inset-bottom))',
+            ? 'calc(460px + env(safe-area-inset-bottom))'
+            : 'calc(245px + env(safe-area-inset-bottom))',
     }}>
 
       {/* Map */}
