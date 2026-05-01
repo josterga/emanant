@@ -1062,7 +1062,7 @@ export default function App() {
     ? 'calc(28px + env(safe-area-inset-bottom))'
     : settingsOpen
       ? 'calc(420px + env(safe-area-inset-bottom))'
-      : 'calc(290px + env(safe-area-inset-bottom))'
+      : 'calc(225px + env(safe-area-inset-bottom))'
 
   return (
     <div style={{
@@ -1243,7 +1243,7 @@ export default function App() {
           background: t.parchmentSheet, backdropFilter: 'blur(12px)',
           borderTop: '1px solid rgba(0,0,0,0.05)',
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          padding: `14px 18px calc(${panelCollapsed ? 10 : 28}px + env(safe-area-inset-bottom))`,
+          padding: `14px 18px calc(14px + env(safe-area-inset-bottom))`,
           zIndex: 10,
           transition: 'padding 0.2s ease',
           minHeight: sheetHeight,
