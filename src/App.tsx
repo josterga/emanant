@@ -1408,6 +1408,10 @@ export default function App() {
                       No account · No personal data collected
                     </div>
                     <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, textAlign: 'center' }}>
+                      <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}>Privacy</a>
+                      <span style={{ margin: '0 6px' }}>·</span>
+                      <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}>Terms</a>
+                      <span style={{ margin: '0 6px' }}>·</span>
                       <a
                         href="https://docs.google.com/forms/d/e/1FAIpQLScctFaGMLcVCsBJFx93rlDqFJweH5F_o8_0vNqI0rvB1fHd1w/viewform?usp=sharing&ouid=100968712771359852520"
                         target="_blank"
