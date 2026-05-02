@@ -647,6 +647,35 @@ interface ReachNeighborhood {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+// ── Cookie consent banner ─────────────────────────────────────────────────────
+
+function CookieBanner({ tok, onAccept, onDecline }: { tok: Tok; onAccept: () => void; onDecline: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+      background: tok.bg, borderTop: `1px solid ${tok.borderSoft}`,
+      padding: '14px 20px',
+      paddingBottom: 'calc(14px + env(safe-area-inset-bottom))',
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 13, color: tok.inkSoft, lineHeight: 1.5 }}>
+        We use anonymous analytics to understand how the app is used.{' '}
+        <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: tok.inkSoft }}>Privacy Policy</a>
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button
+          onClick={onDecline}
+          style={{ padding: '7px 16px', borderRadius: 8, border: `1px solid ${tok.btnBorder}`, background: tok.btnBg, color: tok.btnText, fontSize: 13, cursor: 'pointer' }}
+        >Decline</button>
+        <button
+          onClick={onAccept}
+          style={{ padding: '7px 16px', borderRadius: 8, border: `1px solid ${tok.btnBorder}`, background: tok.btnBg, color: tok.btnText, fontSize: 13, cursor: 'pointer' }}
+        >Accept</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const containerRef      = useRef<HTMLDivElement>(null)
   const mapRef            = useRef<mapboxgl.Map | null>(null)
@@ -684,6 +713,9 @@ export default function App() {
   const [settingsOpen,   setSettingsOpen]   = useState(false)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [onboarded,      setOnboarded]      = useState(() => !!localStorage.getItem('onboarded'))
+  const [cookieConsent,  setCookieConsent]  = useState<'accepted' | 'declined' | null>(
+    () => localStorage.getItem('cookie-consent') as 'accepted' | 'declined' | null
+  )
   const [units,          setUnits]          = useState<'metric' | 'imperial'>(
     () => (localStorage.getItem('units') as 'metric' | 'imperial') ?? 'metric'
   )
@@ -1078,6 +1110,19 @@ export default function App() {
     gtag('event', 'isochrone_shared', { mode, duration_min: minutes })
   }
 
+  // ── Cookie consent ───────────────────────────────────────────────────────
+  function acceptCookies() {
+    localStorage.setItem('cookie-consent', 'accepted')
+    setCookieConsent('accepted')
+    ;(window as Window & { ['ga-disable-G-8RZBC984QD']?: boolean })['ga-disable-G-8RZBC984QD'] = false
+    gtag('config', 'G-8RZBC984QD')
+  }
+  function declineCookies() {
+    localStorage.setItem('cookie-consent', 'declined')
+    setCookieConsent('declined')
+    ;(window as Window & { ['ga-disable-G-8RZBC984QD']?: boolean })['ga-disable-G-8RZBC984QD'] = true
+  }
+
   // ── No token screen ───────────────────────────────────────────────────────
   if (!TOKEN) {
     return (
@@ -1403,6 +1448,15 @@ export default function App() {
                         onChange={v => { if ((v === 'on') !== showSpaces) toggleSpaces() }}
                       />
                     </div>
+                    {/* Analytics */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12, color: t.inkSoft }}>Analytics</span>
+                      <SegControl tok={t}
+                        options={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
+                        value={cookieConsent === 'accepted' ? 'on' : 'off'}
+                        onChange={v => v === 'on' ? acceptCookies() : declineCookies()}
+                      />
+                    </div>
                     {/* Footer */}
                     <div style={{ marginTop: 4, fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: t.inkSoft, textAlign: 'center', lineHeight: 1.5 }}>
                       No account · No personal data collected
@@ -1430,6 +1484,9 @@ export default function App() {
             </>
           )}
         </div>
+      )}
+      {onboarded && cookieConsent === null && (
+        <CookieBanner tok={t} onAccept={acceptCookies} onDecline={declineCookies} />
       )}
     </div>
   )
