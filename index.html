@@ -18,19 +18,22 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
     <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
-    <!-- Suppress GA until cookie consent is given -->
+    <!-- Set GA4 consent based on stored preference before the script loads -->
     <script>
-      if (localStorage.getItem('cookie-consent') !== 'accepted') {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      var _consent = localStorage.getItem('cookie-consent');
+      gtag('consent', 'default', {
+        'analytics_storage': _consent === 'accepted' ? 'granted' : 'denied'
+      });
+      if (_consent !== 'accepted') {
         window['ga-disable-G-8RZBC984QD'] = true;
       }
     </script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-8RZBC984QD"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-8RZBC984QD');
     </script>
   </head>

@@ -1115,12 +1115,13 @@ export default function App() {
     localStorage.setItem('cookie-consent', 'accepted')
     setCookieConsent('accepted')
     ;(window as Window & { ['ga-disable-G-8RZBC984QD']?: boolean })['ga-disable-G-8RZBC984QD'] = false
-    gtag('config', 'G-8RZBC984QD')
+    gtag('consent', 'update', { analytics_storage: 'granted' })
   }
   function declineCookies() {
     localStorage.setItem('cookie-consent', 'declined')
     setCookieConsent('declined')
     ;(window as Window & { ['ga-disable-G-8RZBC984QD']?: boolean })['ga-disable-G-8RZBC984QD'] = true
+    gtag('consent', 'update', { analytics_storage: 'denied' })
   }
 
   // ── No token screen ───────────────────────────────────────────────────────
