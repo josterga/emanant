@@ -815,6 +815,7 @@ export default function App() {
 
     function handlePosition({ coords }: GeolocationPosition) {
       const lnglat: [number, number] = [coords.longitude, coords.latitude]
+      setLocError(false)
 
       if (markerRef.current) {
         markerRef.current.setLngLat(lnglat)
