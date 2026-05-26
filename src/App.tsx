@@ -830,18 +830,6 @@ export default function App() {
       if (firstFixRef.current) {
         firstFixRef.current = false
         map.flyTo({ center: lnglat, zoom: 14, duration: 1000 })
-        fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lnglat[0]},${lnglat[1]}.json` +
-          `?types=neighborhood,locality,place&access_token=${TOKEN}`
-        )
-          .then(r => r.json())
-          .then(data => {
-            const feat = data.features?.[0]
-            if (feat?.text) setNeighborhood(feat.text)
-            const cityCtx = feat?.context?.find((c: { id: string; text: string }) => c.id.startsWith('place.'))
-            if (cityCtx?.text) setCity(cityCtx.text)
-          })
-          .catch(() => {})
       }
 
       const last = lastFetchedRef.current
@@ -860,8 +848,16 @@ export default function App() {
       LOCATION_INTERVAL_MS
     )
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        navigator.geolocation.getCurrentPosition(handlePosition, () => {}, geoOpts)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibility)
       markerRef.current?.remove()
       map.remove()
     }
@@ -875,6 +871,29 @@ export default function App() {
     map.setPaintProperty('isochrone-fill', 'fill-color', color)
     map.setPaintProperty('isochrone-line', 'line-color', color)
   }, [mode, mapReady])
+
+  // ── Fetch current neighborhood name on location change ───────────────────
+  useEffect(() => {
+    if (!effectiveLocation || !TOKEN) return
+    const [lng, lat] = effectiveLocation
+    let cancelled = false
+    setNeighborhood(null)
+    setCity(null)
+    fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+      `?types=neighborhood,locality,place&access_token=${TOKEN}`
+    )
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return
+        const feat = data.features?.[0]
+        if (feat?.text) setNeighborhood(feat.text)
+        const cityCtx = feat?.context?.find((c: { id: string; text: string }) => c.id.startsWith('place.'))
+        if (cityCtx?.text) setCity(cityCtx.text)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [effectiveLocation])
 
   // ── Fetch isochrone + neighborhood reach list ─────────────────────────────
   useEffect(() => {
