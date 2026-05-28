@@ -935,6 +935,9 @@ export default function App() {
     }
   }, [])
 
+  // ── Resize map when shared-location banner appears/disappears ───────────
+  useEffect(() => { mapRef.current?.resize() }, [sharedLocation])
+
   // ── Sync isochrone layer colors with mode ─────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
@@ -1277,16 +1280,42 @@ export default function App() {
       : 'calc(225px + env(safe-area-inset-bottom))'
 
   return (
-    <div style={{
-      height: '100%', position: 'relative',
-      ['--mapctrl-bottom' as string]: listExpanded
-        ? 'calc(100vh + 40px)'
-        : panelCollapsed
-          ? 'calc(33px + env(safe-area-inset-bottom))'
-          : settingsOpen
-            ? 'calc(465px + env(safe-area-inset-bottom))'
-            : 'calc(250px + env(safe-area-inset-bottom))',
-    }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+
+      {/* Shared location banner — above the map, pushes map down */}
+      {sharedLocation && (
+        <div style={{
+          flexShrink: 0,
+          background: dark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.09)',
+          borderBottom: '1px solid rgba(99,102,241,0.18)',
+          padding: '0 16px',
+          height: 40,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          color: dark ? '#a5b4fc' : '#4f46e5',
+          fontSize: 13,
+          fontFamily: "'Instrument Serif', Georgia, serif",
+          zIndex: 100,
+        }}>
+          <span>Viewing a shared location</span>
+          <button
+            onClick={dismissSharedLocation}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 13, padding: 0, fontFamily: 'inherit', opacity: 0.8, whiteSpace: 'nowrap' }}
+          >
+            Use my location ×
+          </button>
+        </div>
+      )}
+
+      <div style={{
+        flex: 1, position: 'relative',
+        ['--mapctrl-bottom' as string]: listExpanded
+          ? 'calc(100vh + 40px)'
+          : panelCollapsed
+            ? 'calc(33px + env(safe-area-inset-bottom))'
+            : settingsOpen
+              ? 'calc(465px + env(safe-area-inset-bottom))'
+              : 'calc(250px + env(safe-area-inset-bottom))',
+      }}>
 
       {/* Map */}
       <div
@@ -1300,92 +1329,105 @@ export default function App() {
 
       {/* ── Top overlays ── */}
 
-      {/* Search input */}
-      {!pinnedLocation && (
-        <div style={{
-          position: 'fixed',
-          top: 'calc(env(safe-area-inset-top, 0px) + 14px)',
-          left: 14, right: 14, zIndex: 20,
-        }}>
-          <div style={{
-            background: t.placeChipBg, backdropFilter: 'blur(8px)',
-            border: searchQuery ? `1px solid ${MODE_COLOR[mode]}40` : '1px solid rgba(0,0,0,0.06)',
-            borderRadius: 20, padding: '0 14px',
-            display: 'flex', alignItems: 'center', gap: 8,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-          }}>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search an address or place"
-              style={{
-                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                fontFamily: "'Instrument Serif', Georgia, serif",
-                fontSize: 15, color: t.text, height: 42,
-                caretColor: MODE_COLOR[mode],
-              }}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => { setSearchQuery(''); setSearchResults([]) }}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: t.inkSoft, fontSize: 16, padding: '0 2px', lineHeight: 1,
-                }}
-              >✕</button>
-            )}
-          </div>
-          {searchResults.length > 0 && (
+      {/* Top bar — neighborhood + search (no pin) or neighborhood + lat/lon (pin active) */}
+      <div style={{ position: 'absolute', top: 14, left: 14, right: 14, zIndex: 20 }}>
+        {pinnedLocation ? (
+          /* Pin active: show neighborhood + coordinates, no search */
+          neighborhood && effectiveLocation && (
             <div style={{
-              marginTop: 6, background: t.placeChipBg, backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(0,0,0,0.06)', borderRadius: 16,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.10)', overflow: 'hidden',
+              background: t.placeChipBg, backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(0,0,0,0.04)', borderRadius: 12, padding: '10px 14px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              {searchResults.map((f, i) => (
-                <div
-                  key={f.id}
-                  onClick={() => {
-                    const [lng, lat] = f.center
-                    setPinnedLocation([lng, lat])
-                    setSearchQuery('')
-                    setSearchResults([])
-                    mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 })
-                    gtag('event', 'pin_placed', { method: 'search', mode, duration_min: minutes })
-                  }}
-                  style={{
-                    padding: '10px 16px',
-                    borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-                    cursor: 'pointer',
-                    fontFamily: "'Instrument Serif', Georgia, serif",
-                    fontSize: 14, color: t.text, lineHeight: 1.3,
-                  }}
-                >
-                  {f.place_name}
-                </div>
-              ))}
+              <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: t.text, lineHeight: 1 }}>
+                {neighborhood}
+              </span>
+              <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, letterSpacing: '0.5px' }}>
+                {formatLatLon(effectiveLocation)}
+              </span>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Place chip */}
-      {neighborhood && effectiveLocation && (
-        <div style={{
-          position: 'absolute', top: 14, left: 14, right: 14, zIndex: 10,
-          background: t.placeChipBg, backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(0,0,0,0.04)', borderRadius: 12, padding: '10px 14px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: t.text, lineHeight: 1 }}>
-            {neighborhood}
-          </span>
-          <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, letterSpacing: '0.5px' }}>
-            {formatLatLon(effectiveLocation)}
-          </span>
-        </div>
-      )}
+          )
+        ) : (
+          /* No pin: combined neighborhood + search bar */
+          <>
+            <div style={{
+              background: t.placeChipBg, backdropFilter: 'blur(8px)',
+              border: searchQuery ? `1px solid ${MODE_COLOR[mode]}40` : '1px solid rgba(0,0,0,0.06)',
+              borderRadius: 12, padding: '0 14px',
+              display: 'flex', alignItems: 'center',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+              height: 42,
+            }}>
+              {neighborhood && (
+                <>
+                  <span style={{
+                    fontFamily: "'Instrument Serif', Georgia, serif",
+                    fontSize: 15, color: t.text, lineHeight: 1,
+                    flexShrink: 0, maxWidth: '38%',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {neighborhood}
+                  </span>
+                  <div style={{ width: 1, height: 16, background: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)', margin: '0 12px', flexShrink: 0 }} />
+                </>
+              )}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={neighborhood ? 'Search…' : 'Search an address or place'}
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  fontFamily: "'Instrument Serif', Georgia, serif",
+                  fontSize: 14, color: t.text,
+                  caretColor: MODE_COLOR[mode],
+                  minWidth: 0,
+                }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(''); setSearchResults([]) }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: t.inkSoft, fontSize: 15, padding: '0 0 0 8px', lineHeight: 1, flexShrink: 0,
+                  }}
+                >✕</button>
+              )}
+            </div>
+            {searchResults.length > 0 && (
+              <div style={{
+                marginTop: 6, background: t.placeChipBg, backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.10)', overflow: 'hidden',
+              }}>
+                {searchResults.map((f, i) => (
+                  <div
+                    key={f.id}
+                    onClick={() => {
+                      const [lng, lat] = f.center
+                      setPinnedLocation([lng, lat])
+                      setSearchQuery('')
+                      setSearchResults([])
+                      mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 })
+                      gtag('event', 'pin_placed', { method: 'search', mode, duration_min: minutes })
+                    }}
+                    style={{
+                      padding: '10px 16px',
+                      borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                      cursor: 'pointer',
+                      fontFamily: "'Instrument Serif', Georgia, serif",
+                      fontSize: 14, color: t.text, lineHeight: 1.3,
+                    }}
+                  >
+                    {f.place_name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Dismiss chip */}
       {pinnedLocation && (
@@ -1509,27 +1551,6 @@ export default function App() {
             </div>
           </div>
         </>
-      )}
-
-      {/* Shared location banner */}
-      {sharedLocation && (
-        <div style={{
-          position: 'absolute', top: 14, left: 14, right: 14, zIndex: 11,
-          background: dark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)',
-          border: '1px solid rgba(99,102,241,0.25)',
-          borderRadius: 12, padding: '10px 14px',
-          color: dark ? '#a5b4fc' : '#4f46e5',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          fontSize: 13,
-        }}>
-          <span>Viewing a shared location</span>
-          <button
-            onClick={dismissSharedLocation}
-            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 13, padding: '0 0 0 12px', fontFamily: 'inherit', opacity: 0.75, whiteSpace: 'nowrap' }}
-          >
-            Use my location ×
-          </button>
-        </div>
       )}
 
       {/* Location error — full-screen calm view */}
@@ -1711,6 +1732,7 @@ export default function App() {
       {onboarded && cookieConsent === null && (
         <CookieBanner tok={t} onAccept={acceptCookies} onDecline={declineCookies} />
       )}
+      </div>
     </div>
   )
 }
