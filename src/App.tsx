@@ -935,8 +935,11 @@ export default function App() {
     }
   }, [])
 
-  // ── Resize map when shared-location banner appears/disappears ───────────
-  useEffect(() => { mapRef.current?.resize() }, [sharedLocation, pinnedLocation])
+  // ── Resize map after banner appears/disappears (deferred past DOM paint) ─
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => mapRef.current?.resize())
+    return () => cancelAnimationFrame(frame)
+  }, [sharedLocation, pinnedLocation])
 
   // ── Sync isochrone layer colors with mode ─────────────────────────────────
   useEffect(() => {
@@ -971,7 +974,7 @@ export default function App() {
 
   // ── Geocoding search (debounced 300ms) ────────────────────────────────────
   useEffect(() => {
-    if (!searchQuery.trim()) { setSearchResults([]); return }
+    if (!searchQuery.trim() || !TOKEN) { setSearchResults([]); return }
     const timer = setTimeout(async () => {
       const center = mapRef.current?.getCenter()
       const proximity = center ? `&proximity=${center.lng},${center.lat}` : ''
@@ -1332,103 +1335,81 @@ export default function App() {
 
       {/* ── Top overlays ── */}
 
-      {/* Top bar — neighborhood + search (no pin) or neighborhood + lat/lon (pin active) */}
+      {/* Top bar — always visible, same in GPS and pin mode */}
       <div style={{ position: 'absolute', top: 14, left: 14, right: 14, zIndex: 20 }}>
-        {pinnedLocation ? (
-          /* Pin active: show neighborhood + coordinates, no search */
-          neighborhood && effectiveLocation && (
-            <div style={{
-              background: t.placeChipBg, backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(0,0,0,0.04)', borderRadius: 12, padding: '10px 14px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
-              <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: t.text, lineHeight: 1 }}>
+        <div style={{
+          background: t.placeChipBg, backdropFilter: 'blur(8px)',
+          border: searchQuery ? `1px solid ${MODE_COLOR[mode]}40` : '1px solid rgba(0,0,0,0.06)',
+          borderRadius: 12, padding: '0 14px',
+          display: 'flex', alignItems: 'center',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          height: 42,
+        }}>
+          {neighborhood && (
+            <>
+              <span style={{
+                fontFamily: "'Instrument Serif', Georgia, serif",
+                fontSize: 15, color: t.text, lineHeight: 1,
+                flexShrink: 0, maxWidth: '38%',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
                 {neighborhood}
               </span>
-              <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, letterSpacing: '0.5px' }}>
-                {formatLatLon(effectiveLocation)}
-              </span>
-            </div>
-          )
-        ) : (
-          /* No pin: combined neighborhood + search bar */
-          <>
-            <div style={{
-              background: t.placeChipBg, backdropFilter: 'blur(8px)',
-              border: searchQuery ? `1px solid ${MODE_COLOR[mode]}40` : '1px solid rgba(0,0,0,0.06)',
-              borderRadius: 12, padding: '0 14px',
-              display: 'flex', alignItems: 'center',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-              height: 42,
-            }}>
-              {neighborhood && (
-                <>
-                  <span style={{
-                    fontFamily: "'Instrument Serif', Georgia, serif",
-                    fontSize: 15, color: t.text, lineHeight: 1,
-                    flexShrink: 0, maxWidth: '38%',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {neighborhood}
-                  </span>
-                  <div style={{ width: 1, height: 16, background: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)', margin: '0 12px', flexShrink: 0 }} />
-                </>
-              )}
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder={neighborhood ? 'Search…' : 'Search an address or place'}
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  fontFamily: "'Instrument Serif', Georgia, serif",
-                  fontSize: 14, color: t.text,
-                  caretColor: MODE_COLOR[mode],
-                  minWidth: 0,
+              <div style={{ width: 1, height: 16, background: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)', margin: '0 12px', flexShrink: 0 }} />
+            </>
+          )}
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={neighborhood ? 'Search…' : 'Search an address or place'}
+            style={{
+              flex: 1, background: 'transparent', border: 'none', outline: 'none',
+              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontSize: 14, color: t.text,
+              caretColor: MODE_COLOR[mode],
+              minWidth: 0,
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(''); setSearchResults([]) }}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: t.inkSoft, fontSize: 15, padding: '0 0 0 8px', lineHeight: 1, flexShrink: 0,
+              }}
+            >✕</button>
+          )}
+        </div>
+        {searchResults.length > 0 && (
+          <div style={{
+            marginTop: 6, background: t.placeChipBg, backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.10)', overflow: 'hidden',
+          }}>
+            {searchResults.map((f, i) => (
+              <div
+                key={f.id}
+                onClick={() => {
+                  const [lng, lat] = f.center
+                  setPinnedLocation([lng, lat])
+                  setSearchQuery('')
+                  setSearchResults([])
+                  mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 })
+                  gtag('event', 'pin_placed', { method: 'search', mode, duration_min: minutes })
                 }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => { setSearchQuery(''); setSearchResults([]) }}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: t.inkSoft, fontSize: 15, padding: '0 0 0 8px', lineHeight: 1, flexShrink: 0,
-                  }}
-                >✕</button>
-              )}
-            </div>
-            {searchResults.length > 0 && (
-              <div style={{
-                marginTop: 6, background: t.placeChipBg, backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.10)', overflow: 'hidden',
-              }}>
-                {searchResults.map((f, i) => (
-                  <div
-                    key={f.id}
-                    onClick={() => {
-                      const [lng, lat] = f.center
-                      setPinnedLocation([lng, lat])
-                      setSearchQuery('')
-                      setSearchResults([])
-                      mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 })
-                      gtag('event', 'pin_placed', { method: 'search', mode, duration_min: minutes })
-                    }}
-                    style={{
-                      padding: '10px 16px',
-                      borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-                      cursor: 'pointer',
-                      fontFamily: "'Instrument Serif', Georgia, serif",
-                      fontSize: 14, color: t.text, lineHeight: 1.3,
-                    }}
-                  >
-                    {f.place_name}
-                  </div>
-                ))}
+                style={{
+                  padding: '10px 16px',
+                  borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                  cursor: 'pointer',
+                  fontFamily: "'Instrument Serif', Georgia, serif",
+                  fontSize: 14, color: t.text, lineHeight: 1.3,
+                }}
+              >
+                {f.place_name}
               </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
       </div>
 
