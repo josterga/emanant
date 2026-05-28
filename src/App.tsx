@@ -936,7 +936,7 @@ export default function App() {
   }, [])
 
   // ── Resize map when shared-location banner appears/disappears ───────────
-  useEffect(() => { mapRef.current?.resize() }, [sharedLocation])
+  useEffect(() => { mapRef.current?.resize() }, [sharedLocation, pinnedLocation])
 
   // ── Sync isochrone layer colors with mode ─────────────────────────────────
   useEffect(() => {
@@ -1282,8 +1282,8 @@ export default function App() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Shared location banner — above the map, pushes map down */}
-      {sharedLocation && (
+      {/* Location context banner — shown when isochrone is not centered on GPS */}
+      {(pinnedLocation || sharedLocation) && (
         <div style={{
           flexShrink: 0,
           background: dark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.09)',
@@ -1296,9 +1296,12 @@ export default function App() {
           fontFamily: "'Instrument Serif', Georgia, serif",
           zIndex: 100,
         }}>
-          <span>Viewing a shared location</span>
+          <span>{pinnedLocation ? 'Viewing a pinned location' : 'Viewing a shared location'}</span>
           <button
-            onClick={dismissSharedLocation}
+            onClick={pinnedLocation
+              ? () => { setPinnedLocation(null); gtag('event', 'pin_dismissed') }
+              : dismissSharedLocation
+            }
             style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 13, padding: 0, fontFamily: 'inherit', opacity: 0.8, whiteSpace: 'nowrap' }}
           >
             Use my location ×
@@ -1429,35 +1432,12 @@ export default function App() {
         )}
       </div>
 
-      {/* Dismiss chip */}
-      {pinnedLocation && (
-        <div
-          onClick={() => {
-            setPinnedLocation(null)
-            gtag('event', 'pin_dismissed')
-          }}
-          style={{
-            position: 'absolute', top: 60, left: 14, zIndex: 10,
-            background: t.placeChipBg, backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(0,0,0,0.06)', borderRadius: 20,
-            padding: '7px 14px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-            cursor: 'pointer',
-            fontFamily: "'Instrument Serif', Georgia, serif",
-            fontSize: 14, color: t.inkSoft,
-            userSelect: 'none',
-          }}
-        >
-          ← My location
-        </div>
-      )}
-
       {/* Neighborhoods pill */}
       {reachList.length > 0 && (
         <button
           onClick={() => { if (!listExpanded) gtag('event', 'reach_list_expanded', {}); setListExpanded(x => !x) }}
           style={{
-            position: 'absolute', top: pinnedLocation ? 98 : 66, left: 14, zIndex: 10,
+            position: 'absolute', top: 66, left: 14, zIndex: 10,
             background: t.placeChipBg, backdropFilter: 'blur(8px)',
             border: '1px solid rgba(0,0,0,0.04)', borderRadius: 999, padding: '7px 14px 7px 12px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
