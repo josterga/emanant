@@ -265,6 +265,13 @@ function addMapLayers(map: mapboxgl.Map): void {
 
 // ── Surveyor mark SVG ─────────────────────────────────────────────────────────
 
+function pinSVG(color: string): string {
+  return `<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="10" cy="10" r="9" fill="none" stroke="${color}" stroke-width="1.5"/>
+    <circle cx="10" cy="10" r="6" fill="${color}"/>
+  </svg>`
+}
+
 function surveyorMarkSVG(color: string, fillColor: string): string {
   const cx = 24, cy = 24
   return `<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -645,6 +652,12 @@ interface ReachNeighborhood {
   distanceM: number
 }
 
+interface GeocodingFeature {
+  id: string
+  place_name: string
+  center: [number, number]
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 // ── Cookie consent banner ─────────────────────────────────────────────────────
@@ -680,11 +693,13 @@ export default function App() {
   const containerRef      = useRef<HTMLDivElement>(null)
   const mapRef            = useRef<mapboxgl.Map | null>(null)
   const markerRef         = useRef<mapboxgl.Marker | null>(null)
+  const pinMarkerRef      = useRef<mapboxgl.Marker | null>(null)
   const lastFetchedRef    = useRef<[number, number] | null>(null)
   const firstFixRef       = useRef(true)
   const lastHeadingRef    = useRef<number | null>(null)
   const dialDebounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const modeRef           = useRef('walking')
+  const minutesRef        = useRef(15)
   const darkRef           = useRef(false)
 
   const [themeMode,  setThemeMode]  = useState<'light' | 'system' | 'dark'>(
@@ -720,17 +735,21 @@ export default function App() {
     () => (localStorage.getItem('units') as 'metric' | 'imperial') ?? 'metric'
   )
   const [showSpaces,     setShowSpaces]     = useState(true)
-  const [sharedLocation, setSharedLocation] = useState<[number, number] | null>(null)
-  const [shareToast,     setShareToast]     = useState<'idle' | 'copied' | 'shared'>('idle')
+  const [sharedLocation,  setSharedLocation]  = useState<[number, number] | null>(null)
+  const [pinnedLocation,  setPinnedLocation]  = useState<[number, number] | null>(null)
+  const [searchQuery,     setSearchQuery]     = useState('')
+  const [searchResults,   setSearchResults]   = useState<GeocodingFeature[]>([])
+  const [shareToast,      setShareToast]      = useState<'idle' | 'copied' | 'shared'>('idle')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [isoData,        setIsoData]        = useState<any>(null)
 
-  const effectiveLocation = sharedLocation ?? location
+  const effectiveLocation = pinnedLocation ?? sharedLocation ?? location
 
   const t = useMemo(() => tok(dark), [dark])
 
   // Keep refs in sync for use inside effects with stale closures
   useEffect(() => { modeRef.current = mode }, [mode])
+  useEffect(() => { minutesRef.current = minutes }, [minutes])
   useEffect(() => { darkRef.current = dark }, [dark])
   useEffect(() => { setDialMinutes(minutes) }, [minutes])
 
@@ -793,6 +812,13 @@ export default function App() {
     el.innerHTML = surveyorMarkSVG(MODE_COLOR[mode], t.markFill)
   }, [mode, t.markFill])
 
+  // ── Update pin marker color when mode changes ─────────────────────────────
+  useEffect(() => {
+    const el = pinMarkerRef.current?.getElement()
+    if (!el) return
+    el.innerHTML = pinSVG(MODE_COLOR[mode])
+  }, [mode])
+
   // ── Init map + GPS polling ────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || !TOKEN) return
@@ -812,6 +838,46 @@ export default function App() {
       addMapLayers(map)
       setMapReady(true)
     })
+
+    map.doubleClickZoom.disable()
+
+    // ── Long-press to drop pin ────────────────────────────────────────────────
+    let pressTimer: ReturnType<typeof setTimeout> | null = null
+    let pressOrigin: [number, number] | null = null
+
+    const canvas = map.getCanvas()
+
+    const onPointerDown = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      const px = e.clientX - rect.left
+      const py = e.clientY - rect.top
+      pressOrigin = [e.clientX, e.clientY]
+      pressTimer = setTimeout(() => {
+        pressTimer = null; pressOrigin = null
+        const pt = map.unproject([px, py] as [number, number])
+        setPinnedLocation([pt.lng, pt.lat])
+        setSearchQuery('')
+        setSearchResults([])
+        gtag('event', 'pin_placed', { method: 'longpress', mode: modeRef.current, duration_min: minutesRef.current })
+      }, 500)
+    }
+
+    const cancelPress = () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null }
+      pressOrigin = null
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!pressOrigin) return
+      const dx = e.clientX - pressOrigin[0]
+      const dy = e.clientY - pressOrigin[1]
+      if (dx * dx + dy * dy > 64) cancelPress()
+    }
+
+    canvas.addEventListener('pointerdown', onPointerDown)
+    canvas.addEventListener('pointermove', onPointerMove)
+    canvas.addEventListener('pointerup', cancelPress)
+    canvas.addEventListener('pointercancel', cancelPress)
 
     function handlePosition({ coords }: GeolocationPosition) {
       const lnglat: [number, number] = [coords.longitude, coords.latitude]
@@ -859,7 +925,12 @@ export default function App() {
     return () => {
       clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibility)
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerup', cancelPress)
+      canvas.removeEventListener('pointercancel', cancelPress)
       markerRef.current?.remove()
+      pinMarkerRef.current?.remove()
       map.remove()
     }
   }, [])
@@ -872,6 +943,45 @@ export default function App() {
     map.setPaintProperty('isochrone-fill', 'fill-color', color)
     map.setPaintProperty('isochrone-line', 'line-color', color)
   }, [mode, mapReady])
+
+  // ── Pin marker lifecycle ──────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (!pinnedLocation) {
+      pinMarkerRef.current?.remove()
+      pinMarkerRef.current = null
+      return
+    }
+    const [lng, lat] = pinnedLocation
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current.setLngLat([lng, lat])
+    } else {
+      const el = document.createElement('div')
+      el.style.cssText = 'width:20px;height:20px;cursor:pointer'
+      el.innerHTML = pinSVG(MODE_COLOR[mode])
+      pinMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng, lat])
+        .addTo(map)
+    }
+  }, [pinnedLocation, mapReady])
+
+  // ── Geocoding search (debounced 300ms) ────────────────────────────────────
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); return }
+    const timer = setTimeout(async () => {
+      const center = mapRef.current?.getCenter()
+      const proximity = center ? `&proximity=${center.lng},${center.lat}` : ''
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
+        `${encodeURIComponent(searchQuery)}.json?access_token=${TOKEN}&limit=4&autocomplete=true${proximity}`
+      try {
+        const res = await fetch(url)
+        const data = await res.json()
+        setSearchResults(data.features ?? [])
+      } catch {}
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // ── Fetch current neighborhood name on location change ───────────────────
   useEffect(() => {
@@ -1190,6 +1300,75 @@ export default function App() {
 
       {/* ── Top overlays ── */}
 
+      {/* Search input */}
+      {!pinnedLocation && (
+        <div style={{
+          position: 'fixed',
+          top: 'calc(env(safe-area-inset-top, 0px) + 14px)',
+          left: 14, right: 14, zIndex: 20,
+        }}>
+          <div style={{
+            background: t.placeChipBg, backdropFilter: 'blur(8px)',
+            border: searchQuery ? `1px solid ${MODE_COLOR[mode]}40` : '1px solid rgba(0,0,0,0.06)',
+            borderRadius: 20, padding: '0 14px',
+            display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search an address or place"
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                fontFamily: "'Instrument Serif', Georgia, serif",
+                fontSize: 15, color: t.text, height: 42,
+                caretColor: MODE_COLOR[mode],
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => { setSearchQuery(''); setSearchResults([]) }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: t.inkSoft, fontSize: 16, padding: '0 2px', lineHeight: 1,
+                }}
+              >✕</button>
+            )}
+          </div>
+          {searchResults.length > 0 && (
+            <div style={{
+              marginTop: 6, background: t.placeChipBg, backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(0,0,0,0.06)', borderRadius: 16,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.10)', overflow: 'hidden',
+            }}>
+              {searchResults.map((f, i) => (
+                <div
+                  key={f.id}
+                  onClick={() => {
+                    const [lng, lat] = f.center
+                    setPinnedLocation([lng, lat])
+                    setSearchQuery('')
+                    setSearchResults([])
+                    mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 })
+                    gtag('event', 'pin_placed', { method: 'search', mode, duration_min: minutes })
+                  }}
+                  style={{
+                    padding: '10px 16px',
+                    borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'Instrument Serif', Georgia, serif",
+                    fontSize: 14, color: t.text, lineHeight: 1.3,
+                  }}
+                >
+                  {f.place_name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Place chip */}
       {neighborhood && effectiveLocation && (
         <div style={{
@@ -1208,12 +1387,35 @@ export default function App() {
         </div>
       )}
 
+      {/* Dismiss chip */}
+      {pinnedLocation && (
+        <div
+          onClick={() => {
+            setPinnedLocation(null)
+            gtag('event', 'pin_dismissed')
+          }}
+          style={{
+            position: 'absolute', top: 60, left: 14, zIndex: 10,
+            background: t.placeChipBg, backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(0,0,0,0.06)', borderRadius: 20,
+            padding: '7px 14px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            fontFamily: "'Instrument Serif', Georgia, serif",
+            fontSize: 14, color: t.inkSoft,
+            userSelect: 'none',
+          }}
+        >
+          ← My location
+        </div>
+      )}
+
       {/* Neighborhoods pill */}
       {reachList.length > 0 && (
         <button
           onClick={() => { if (!listExpanded) gtag('event', 'reach_list_expanded', {}); setListExpanded(x => !x) }}
           style={{
-            position: 'absolute', top: 66, left: 14, zIndex: 10,
+            position: 'absolute', top: pinnedLocation ? 98 : 66, left: 14, zIndex: 10,
             background: t.placeChipBg, backdropFilter: 'blur(8px)',
             border: '1px solid rgba(0,0,0,0.04)', borderRadius: 999, padding: '7px 14px 7px 12px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
