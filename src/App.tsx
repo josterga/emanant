@@ -575,7 +575,7 @@ function OnboardingSheet({ tok, onDismiss }: { tok: Tok; onDismiss: () => void }
         </div>
         {/* Footer */}
         <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: tok.inkSoft, textAlign: 'center' }}>
-          No account · No personal data · Anonymous analytics
+          No account · Your location never leaves this device · Analytics via GA4 (no location data)
         </div>
       </div>
     </>
@@ -659,7 +659,7 @@ function CookieBanner({ tok, onAccept, onDecline }: { tok: Tok; onAccept: () => 
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 13, color: tok.inkSoft, lineHeight: 1.5 }}>
-        We use anonymous analytics to understand how the app is used.{' '}
+        We use GA4 analytics to understand how the app is used. Your location is never included.{' '}
         <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: tok.inkSoft }}>Privacy Policy</a>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
