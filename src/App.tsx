@@ -951,16 +951,24 @@ export default function App() {
     map.setPaintProperty('isochrone-line', 'line-color', color)
   }, [mode, mapReady])
 
+  // ── Clear shared URL when user pins their own location ───────────────────
+  useEffect(() => {
+    if (!pinnedLocation || !sharedLocation) return
+    setSharedLocation(null)
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [pinnedLocation])
+
   // ── Pin marker lifecycle ──────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-    if (!pinnedLocation) {
+    const pinLocation = pinnedLocation ?? sharedLocation
+    if (!pinLocation) {
       pinMarkerRef.current?.remove()
       pinMarkerRef.current = null
       return
     }
-    const [lng, lat] = pinnedLocation
+    const [lng, lat] = pinLocation
     if (pinMarkerRef.current) {
       pinMarkerRef.current.setLngLat([lng, lat])
     } else {
@@ -971,7 +979,7 @@ export default function App() {
         .setLngLat([lng, lat])
         .addTo(map)
     }
-  }, [pinnedLocation, mapReady])
+  }, [pinnedLocation, sharedLocation, mapReady])
 
   // ── Geocoding search (debounced 300ms) ────────────────────────────────────
   useEffect(() => {
@@ -1239,26 +1247,25 @@ export default function App() {
       try {
         await navigator.share({ title, url })
         setShareToast('shared')
+        gtag('event', 'isochrone_shared', { mode, duration_min: minutes })
       } catch { /* user cancelled */ }
     } else {
       await navigator.clipboard.writeText(url)
       setShareToast('copied')
+      gtag('event', 'isochrone_shared', { mode, duration_min: minutes })
     }
     setTimeout(() => setShareToast('idle'), 2000)
-    gtag('event', 'isochrone_shared', { mode, duration_min: minutes })
   }
 
   // ── Cookie consent ───────────────────────────────────────────────────────
   function acceptCookies() {
     localStorage.setItem('cookie-consent', 'accepted')
     setCookieConsent('accepted')
-    ;(window as Window & { ['ga-disable-G-8RZBC984QD']?: boolean })['ga-disable-G-8RZBC984QD'] = false
     gtag('consent', 'update', { analytics_storage: 'granted' })
   }
   function declineCookies() {
     localStorage.setItem('cookie-consent', 'declined')
     setCookieConsent('declined')
-    ;(window as Window & { ['ga-disable-G-8RZBC984QD']?: boolean })['ga-disable-G-8RZBC984QD'] = true
     gtag('consent', 'update', { analytics_storage: 'denied' })
   }
 
