@@ -767,6 +767,7 @@ export default function App() {
     if (m && ['walking', 'cycling'].includes(m)) setMode(m)
     const tParam = parseInt(params.get('t') ?? '', 10)
     if (TIMES.includes(tParam)) setMinutes(tParam)
+    gtag('event', 'shared_location_viewed', { mode: m ?? 'walking', duration_min: TIMES.includes(tParam) ? tParam : 15 })
   }, [])
 
   // ── System dark mode listener ─────────────────────────────────────────────
@@ -1226,6 +1227,7 @@ export default function App() {
   async function handleShare() {
     if (!effectiveLocation) return
     const [lng, lat] = effectiveLocation
+    gtag('event', 'share_tapped', { mode, duration_min: minutes })
     const url = `${window.location.origin}${window.location.pathname}?loc=${obfuscateCoords(lat, lng)}&m=${mode}&t=${minutes}`
     const reachR = isoData ? isochroneRadius(effectiveLocation, isoData) : null
     const reachStr = reachR ? formatDistance(reachR, units) : null
