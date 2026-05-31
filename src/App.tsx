@@ -580,10 +580,6 @@ function OnboardingSheet({ tok, onDismiss }: { tok: Tok; onDismiss: () => void }
           </div>
           <span style={{ color: tok.inkSoft, fontSize: 16 }}>›</span>
         </div>
-        {/* Footer */}
-        <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: tok.inkSoft, textAlign: 'center' }}>
-          No account · Your location never leaves this device · Analytics via GA4 (no location data)
-        </div>
       </div>
     </>
   )
@@ -1670,10 +1666,6 @@ export default function App() {
                         value={cookieConsent === 'accepted' ? 'on' : 'off'}
                         onChange={v => v === 'on' ? acceptCookies() : declineCookies()}
                       />
-                    </div>
-                    {/* Footer */}
-                    <div style={{ marginTop: 4, fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 11, color: t.inkSoft, textAlign: 'center', lineHeight: 1.5 }}>
-                      No account · No personal data collected
                     </div>
                     <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, textAlign: 'center' }}>
                       <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}>Privacy</a>

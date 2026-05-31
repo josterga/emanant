@@ -99,12 +99,12 @@
 
     <p>Google Analytics also automatically records your IP address and basic browser information as part of standard web analytics.</p>
 
-    <p><strong>Map tiles.</strong> The map is rendered by Mapbox. Your browser makes requests to Mapbox's servers to load map imagery. Mapbox's own privacy policy governs that data.</p>
+    <p><strong>Mapbox APIs.</strong> The map is rendered by Mapbox, and your browser also makes requests to Mapbox's Isochrone and Geocoding APIs — these are what power the reach-circle calculation and neighborhood display, and they require your GPS coordinates to work. Emanant never receives or stores your location; it goes directly from your browser to Mapbox. Mapbox's own <a href="https://www.mapbox.com/legal/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a> governs all data they receive.</p>
 
     <h2>What we don't collect</h2>
 
     <ul>
-      <li><strong>Precise location.</strong> Your GPS coordinates are used only on your device to draw the reach circle. They are never transmitted to us or stored anywhere.</li>
+      <li><strong>Precise location.</strong> Emanant never receives, stores, or sells your GPS coordinates. Your location is sent directly from your browser to Mapbox's APIs to power the app's core features — we have no access to it, and it is not included in any analytics event.</li>
       <li><strong>Accounts.</strong> There is no sign-up, login, or user profile of any kind.</li>
       <li><strong>Personal identifiers.</strong> No names, email addresses, phone numbers, or device IDs are collected by Emanant.</li>
     </ul>
@@ -125,7 +125,7 @@
 
     <ul>
       <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google Analytics</a> — anonymous usage analytics</li>
-      <li><a href="https://www.mapbox.com/legal/privacy" target="_blank" rel="noopener noreferrer">Mapbox</a> — map rendering and tile delivery</li>
+      <li><a href="https://www.mapbox.com/legal/privacy" target="_blank" rel="noopener noreferrer">Mapbox</a> — map rendering, isochrone calculation, and geocoding (receives GPS coordinates)</li>
     </ul>
 
     <h2>Changes</h2>
