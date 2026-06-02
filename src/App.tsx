@@ -465,7 +465,7 @@ function ModePillBar({ mode, units, tok, onChange }: {
           >
             <Icon />
             <span style={{ fontSize: 16, fontWeight: 500 }}>{label}</span>
-            <span style={{ fontSize: 11, opacity: 0.6 }}>{formatSpeedCap(speed, units)}</span>
+            <span style={{ fontSize: 13, color: tok.inkSoft }}>{formatSpeedCap(speed, units)}</span>
           </button>
         )
       })}
@@ -1432,10 +1432,10 @@ export default function App() {
           }}
         >
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-          <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 14, color: t.inkSoft }}>
+          <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 15, color: t.text }}>
             {reachList.length} neighborhood{reachList.length !== 1 ? 's' : ''}
           </span>
-          <span style={{ fontSize: 11, color: t.inkSoft, display: 'inline-block', transform: listExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+          <span style={{ fontSize: 13, color: t.inkSoft, display: 'inline-block', transform: listExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
             ↑
           </span>
         </button>
