@@ -435,6 +435,7 @@ const MODE_COLOR: Record<string, string> = {
 }
 const AMBER_TINT = 'rgba(201,123,63,0.10)'
 const SAGE_TINT  = 'rgba(63,107,94,0.10)'
+const PURPLE = '#6366f1'
 
 function ModePillBar({ mode, units, tok, onChange }: {
   mode: string
@@ -475,7 +476,7 @@ function ModePillBar({ mode, units, tok, onChange }: {
 
 // ── Segmented control (settings) ──────────────────────────────────────────────
 
-function SegControl({ options, value, onChange, tok, accent = '#3F6B5E' }: {
+function SegControl({ options, value, onChange, tok, accent = PURPLE }: {
   options: { value: string; label: string }[]
   value: string
   onChange: (v: string) => void
@@ -1573,12 +1574,12 @@ export default function App() {
                   aria-label="Share isochrone"
                   style={{
                     width: 36, height: 36, borderRadius: '50%',
-                    background: shareToast !== 'idle' ? `${color}22` : t.cardBg,
+                    background: shareToast !== 'idle' ? `${PURPLE}33` : `${PURPLE}18`,
                     border: `1px solid ${t.borderSoft}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: effectiveLocation ? 'pointer' : 'default',
                     opacity: effectiveLocation ? 1 : 0.3,
-                    color: shareToast !== 'idle' ? color : t.text,
+                    color: PURPLE,
                     transition: 'all 0.2s',
                     flexShrink: 0,
                   }}
