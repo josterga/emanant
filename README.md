@@ -4,79 +4,36 @@
 
 Emanant draws the area you can reach from your current location within a chosen time window and surfaces the neighborhoods and places inside it.
 
-## What it does
+## Features
 
-Set a travel mode and a duration. Emanant queries the Mapbox Isochrone API, renders the reachable area as a polygon on the map, and lists up to 12 nearby places found within that boundary — each labeled with its direction and distance from you.
+- **Travel modes:** walking, cycling
+- **Durations:** 5, 10, 15, 20, 25, or 30 minutes
+- **Reach list:** nearby neighborhood names with cardinal direction, distance, and estimated travel time
+- **Spaces:** optional toggle to include parks and public spaces in the reach list
+- **Address search:** type any address or place to explore that area remotely
+- **Pin drop:** long-press anywhere on the map to drop a pin at that coordinate
+- **Live location:** GPS updates as you move
+- **Location sharing:** share a URL that opens the app centered on your current isochrone
+- **Compass:** optional device-orientation heading indicator
+- **Themes:** light, dark, or system
+- **Units:** metric or imperial
 
-- **Travel modes** — walking, cycling
-- **Durations** — 5, 10, 15, 20, or 30 minutes
-- **Reach list** — nearby place names with cardinal direction and distance
-- **Address search** — type any address or place to drop a pin and explore that area remotely; the isochrone regenerates from the pin
-- **Pin drop** — long-press anywhere on the map to drop a pin at that coordinate
-- **Live location** — GPS updates as you move (10-second interval, 10 m threshold)
-- **Location sharing** — share a URL that opens the app centered on your current isochrone
-- **Compass** — optional device-orientation heading indicator
-- **Themes** — light, dark, or system
-- **Units** — metric or imperial
+Settings let you configure appearance, units, compass, spaces visibility, and analytics consent.
 
 ## Pin mode
 
 Pin mode lets you explore any neighborhood without being physically there — useful for apartment hunting, trip planning, or curiosity.
 
-Drop a pin via address search or by long-pressing the map. The isochrone regenerates from the pin while your GPS dot stays visible at your actual location. A "Viewing a pinned location" banner at the top of the screen confirms the mode; tapping "Clear pin ×" restores your GPS origin instantly.
+Drop a pin via address search or by long-pressing the map. The isochrone regenerates from the pin while your GPS dot stays visible at your actual location. A "Viewing a pinned location" banner at the top of the screen confirms the mode; tapping "Clear pin x" restores your GPS origin instantly.
 
-No addresses are saved or included in shared URLs — pins are ephemeral.
+No addresses are saved or included in shared URLs. Pins are ephemeral.
 
-## Stack
+## Privacy
 
-| | |
-|---|---|
-| Framework | React 18 |
-| Map | Mapbox GL JS v3 |
-| Build | Vite + TypeScript |
-| APIs | Mapbox Isochrone, Mapbox Tile Query, Mapbox Geocoding |
+**Analytics (Google Analytics 4):** Emanant uses GA4 to understand how the app is used (button taps, feature interactions). Analytics are tied to city-level location only. Your precise GPS coordinates are never sent to Google. You can opt out in Settings under Analytics.
 
-## Getting started
+**Map data (Mapbox):** Drawing your reachable area requires sending your GPS coordinates to the Mapbox Isochrone API. Mapbox uses this to calculate the reachable polygon. The app does not store, log, or retain that coordinate data.
 
-**1. Get a Mapbox token**
+## License
 
-Create a free account at [mapbox.com](https://mapbox.com) and copy your public token.
-
-**2. Set the token**
-
-Create a `.env` file in the project root:
-
-```
-VITE_MAPBOX_TOKEN=pk.your_token_here
-```
-
-**3. Install and run**
-
-```sh
-npm install
-npm run dev
-```
-
-**4. Build for production**
-
-```sh
-npm run build
-```
-
-## Project structure
-
-```
-src/
-  App.tsx       # entire application — map init, isochrone fetch, UI
-  index.css     # global styles and reach-list component styles
-index.html
-```
-
-## How it works
-
-1. On load the map centers on your GPS position (or London as a fallback).
-2. When location, mode, or duration changes, Emanant fetches an isochrone polygon from the Mapbox API.
-3. The polygon is rendered as a semi-transparent fill with a colored outline, and the map zooms to fit it.
-4. The Mapbox Tile Query API is called at the center and up to 4 boundary sample points to find `place_label` features inside the polygon.
-5. Results are filtered, deduplicated, sorted by distance, and shown in a collapsible list.
-6. In pin mode the effective origin switches to the pinned coordinate; all downstream queries (isochrone, tile query, neighborhood label) use it automatically via a shared `effectiveLocation` derivation: `pinnedLocation ?? sharedLocation ?? gpsLocation`.
+Emanant is proprietary software. See [LICENSE](LICENSE) for full terms. No part of this codebase may be reproduced or distributed without permission.
