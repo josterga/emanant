@@ -4,15 +4,9 @@
   padding: 0;
 }
 
-html, body {
-  height: 100%;
+html, body, #root {
+  height: 100svh;
   width: 100%;
-  overflow: hidden;
-}
-
-#root {
-  position: fixed;
-  inset: 0;
   overflow: hidden;
 }
 
