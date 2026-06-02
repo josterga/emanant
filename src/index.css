@@ -4,9 +4,15 @@
   padding: 0;
 }
 
-html, body, #root {
-  height: var(--app-height, 100dvh);
+html, body {
+  height: 100%;
   width: 100%;
+  overflow: hidden;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
   overflow: hidden;
 }
 
