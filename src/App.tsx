@@ -415,7 +415,7 @@ function TimeDial({ value, accent, tok, onChange, onCommit }: {
         return (
           <div key={tickVal} style={{ position: 'absolute', left: `${left}%`, top: 14, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, pointerEvents: 'none' }}>
             <div style={{ width: 1.5, height: 14, background: isActive ? accent : tok.dialTick }} />
-            <span style={{ fontSize: 10, color: tickVal === value ? accent : tok.inkSoft, fontWeight: tickVal === value ? 600 : 400, fontFamily: 'Satoshi, system-ui, sans-serif' }}>
+            <span style={{ fontSize: 11, color: tickVal === value ? accent : tok.inkSoft, fontWeight: tickVal === value ? 600 : 400, fontFamily: 'Satoshi, system-ui, sans-serif' }}>
               {tickVal}
             </span>
           </div>
@@ -464,8 +464,8 @@ function ModePillBar({ mode, units, tok, onChange }: {
             }}
           >
             <Icon />
-            <span style={{ fontSize: 14, fontWeight: 500 }}>{label}</span>
-            <span style={{ fontSize: 10, opacity: 0.6 }}>{formatSpeedCap(speed, units)}</span>
+            <span style={{ fontSize: 16, fontWeight: 500 }}>{label}</span>
+            <span style={{ fontSize: 11, opacity: 0.6 }}>{formatSpeedCap(speed, units)}</span>
           </button>
         )
       })}
@@ -494,7 +494,7 @@ function SegControl({ options, value, onChange, tok, accent = '#3F6B5E' }: {
             border: 'none',
             borderRight: i < options.length - 1 ? `1px solid ${tok.borderSoft}` : 'none',
             color: value === opt.value ? accent : tok.inkSoft,
-            fontSize: 12,
+            fontSize: 14,
             cursor: 'pointer',
             fontFamily: 'inherit',
             whiteSpace: 'nowrap' as const,
@@ -545,7 +545,7 @@ function OnboardingSheet({ tok, onDismiss }: { tok: Tok; onDismiss: () => void }
         {/* Handle */}
         <div style={{ width: 36, height: 4, background: tok.handleBar, borderRadius: 2, margin: '0 auto 20px' }} />
         {/* Eyebrow */}
-        <div style={{ fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color: MODE_COLOR.walking, fontFamily: 'ui-monospace, Menlo, monospace', marginBottom: 10 }}>
+        <div style={{ fontSize: 11, letterSpacing: '2px', textTransform: 'uppercase', color: MODE_COLOR.walking, fontFamily: 'ui-monospace, Menlo, monospace', marginBottom: 10 }}>
           Emanare · To flow out
         </div>
         {/* Headline */}
@@ -575,8 +575,8 @@ function OnboardingSheet({ tok, onDismiss }: { tok: Tok; onDismiss: () => void }
             </svg>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: tok.text }}>Use my location</div>
-            <div style={{ fontSize: 12, color: tok.inkSoft }}>Your precise location stays on this device.</div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: tok.text }}>Use my location</div>
+            <div style={{ fontSize: 14, color: tok.inkSoft }}>Your precise location stays on this device.</div>
           </div>
           <span style={{ color: tok.inkSoft, fontSize: 16 }}>›</span>
         </div>
@@ -605,14 +605,14 @@ function ErrorView({ tok, onRetry, onBrowse }: { tok: Tok; onRetry: () => void; 
       <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 26, lineHeight: 1.2, color: tok.text, textAlign: 'center', marginBottom: 12 }}>
         We can't find<br />where you stand.
       </div>
-      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 14, color: tok.inkSoft, textAlign: 'center', lineHeight: 1.5, marginBottom: 28 }}>
+      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 16, color: tok.inkSoft, textAlign: 'center', lineHeight: 1.5, marginBottom: 28 }}>
         Emanant needs your location to draw your reach. Your precise location stays on this device.
       </div>
       <button
         onClick={onRetry}
         style={{
           padding: '12px 22px', borderRadius: 10, border: 'none', cursor: 'pointer',
-          background: MODE_COLOR.cycling, color: '#F2EBDD', fontSize: 14, fontWeight: 500,
+          background: MODE_COLOR.cycling, color: '#F2EBDD', fontSize: 16, fontWeight: 500,
           fontFamily: 'inherit', marginBottom: 14,
         }}
       >
@@ -620,7 +620,7 @@ function ErrorView({ tok, onRetry, onBrowse }: { tok: Tok; onRetry: () => void; 
       </button>
       <button
         onClick={onBrowse}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: tok.inkSoft, textDecoration: 'underline', fontFamily: 'inherit' }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: tok.inkSoft, textDecoration: 'underline', fontFamily: 'inherit' }}
       >
         Or browse a sample map →
       </button>
@@ -667,18 +667,18 @@ function CookieBanner({ tok, onAccept, onDecline }: { tok: Tok; onAccept: () => 
       paddingBottom: 'calc(14px + env(safe-area-inset-bottom))',
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
-      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 13, color: tok.inkSoft, lineHeight: 1.5 }}>
+      <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 15, color: tok.inkSoft, lineHeight: 1.5 }}>
         We use GA4 analytics to understand how the app is used. Your location is never included.{' '}
         <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: tok.inkSoft }}>Privacy Policy</a>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button
           onClick={onDecline}
-          style={{ padding: '7px 16px', borderRadius: 8, border: `1px solid ${tok.btnBorder}`, background: tok.btnBg, color: tok.btnText, fontSize: 13, cursor: 'pointer' }}
+          style={{ padding: '7px 16px', borderRadius: 8, border: `1px solid ${tok.btnBorder}`, background: tok.btnBg, color: tok.btnText, fontSize: 15, cursor: 'pointer' }}
         >Decline</button>
         <button
           onClick={onAccept}
-          style={{ padding: '7px 16px', borderRadius: 8, border: `1px solid ${tok.btnBorder}`, background: tok.btnBg, color: tok.btnText, fontSize: 13, cursor: 'pointer' }}
+          style={{ padding: '7px 16px', borderRadius: 8, border: `1px solid ${tok.btnBorder}`, background: tok.btnBg, color: tok.btnText, fontSize: 15, cursor: 'pointer' }}
         >Accept</button>
       </div>
     </div>
@@ -1271,8 +1271,8 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 14, padding: 28 }}>
         <div style={{ fontSize: 40 }}>🗺️</div>
         <div style={{ fontSize: 18, fontWeight: 700 }}>Mapbox token required</div>
-        <div style={{ fontSize: 14, color: t.textMuted, maxWidth: 280, textAlign: 'center', lineHeight: 1.5 }}>
-          Copy <code style={{ fontFamily: 'ui-monospace, "SF Mono", monospace', fontSize: 13, background: t.codeBg, border: `1px solid ${t.codeBorder}`, borderRadius: 8, padding: '2px 7px', color: t.codeText }}>.env.example</code> to <code style={{ fontFamily: 'ui-monospace, "SF Mono", monospace', fontSize: 13, background: t.codeBg, border: `1px solid ${t.codeBorder}`, borderRadius: 8, padding: '2px 7px', color: t.codeText }}>.env</code> and add your public token
+        <div style={{ fontSize: 16, color: t.textMuted, maxWidth: 280, textAlign: 'center', lineHeight: 1.5 }}>
+          Copy <code style={{ fontFamily: 'ui-monospace, "SF Mono", monospace', fontSize: 15, background: t.codeBg, border: `1px solid ${t.codeBorder}`, borderRadius: 8, padding: '2px 7px', color: t.codeText }}>.env.example</code> to <code style={{ fontFamily: 'ui-monospace, "SF Mono", monospace', fontSize: 15, background: t.codeBg, border: `1px solid ${t.codeBorder}`, borderRadius: 8, padding: '2px 7px', color: t.codeText }}>.env</code> and add your public token
         </div>
       </div>
     )
@@ -1300,7 +1300,7 @@ export default function App() {
           height: 40,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           color: dark ? '#a5b4fc' : '#4f46e5',
-          fontSize: 13,
+          fontSize: 15,
           fontFamily: "'Instrument Serif', Georgia, serif",
           zIndex: 100,
         }}>
@@ -1310,7 +1310,7 @@ export default function App() {
               ? () => { setPinnedLocation(null); gtag('event', 'pin_dismissed') }
               : dismissSharedLocation
             }
-            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 13, padding: 0, fontFamily: 'inherit', opacity: 0.8, whiteSpace: 'nowrap' }}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 15, padding: 0, fontFamily: 'inherit', opacity: 0.8, whiteSpace: 'nowrap' }}
           >
             Use my location ×
           </button>
@@ -1354,7 +1354,7 @@ export default function App() {
             <>
               <span style={{
                 fontFamily: "'Instrument Serif', Georgia, serif",
-                fontSize: 15, color: t.text, lineHeight: 1,
+                fontSize: 16, color: t.text, lineHeight: 1,
                 flexShrink: 0, maxWidth: '38%',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
@@ -1371,7 +1371,7 @@ export default function App() {
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               fontFamily: "'Instrument Serif', Georgia, serif",
-              fontSize: 14, color: t.text,
+              fontSize: 16, color: t.text,
               caretColor: MODE_COLOR[mode],
               minWidth: 0,
             }}
@@ -1408,7 +1408,7 @@ export default function App() {
                   borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
                   cursor: 'pointer',
                   fontFamily: "'Instrument Serif', Georgia, serif",
-                  fontSize: 14, color: t.text, lineHeight: 1.3,
+                  fontSize: 16, color: t.text, lineHeight: 1.3,
                 }}
               >
                 {f.place_name}
@@ -1432,7 +1432,7 @@ export default function App() {
           }}
         >
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-          <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 12, color: t.inkSoft }}>
+          <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 14, color: t.inkSoft }}>
             {reachList.length} neighborhood{reachList.length !== 1 ? 's' : ''}
           </span>
           <span style={{ fontSize: 11, color: t.inkSoft, display: 'inline-block', transform: listExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
@@ -1448,7 +1448,7 @@ export default function App() {
           background: t.placeChipBg, backdropFilter: 'blur(8px)',
           border: '1px solid rgba(0,0,0,0.04)', borderRadius: 999, padding: '7px 14px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-          fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: t.inkSoft,
+          fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 14, color: t.inkSoft,
         }}>
           ↑ {toCardinal(heading).cardinal}
         </div>
@@ -1464,7 +1464,7 @@ export default function App() {
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <div className="loading-dot" />
-          <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: t.inkSoft }}>Calculating…</span>
+          <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 14, color: t.inkSoft }}>Calculating…</span>
         </div>
       )}
 
@@ -1491,7 +1491,7 @@ export default function App() {
               <div style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 22, color: t.text, letterSpacing: '-0.3px', lineHeight: 1.2 }}>
                 Within reach
               </div>
-              <div style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: 12, color: t.inkSoft }}>
+              <div style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: 14, color: t.inkSoft }}>
                 {reachList.length} neighborhood{reachList.length !== 1 ? 's' : ''} within {minutes} min {mode === 'walking' ? 'walk' : 'bike'}
               </div>
             </div>
@@ -1508,10 +1508,10 @@ export default function App() {
                   }}
                 >
                   <span style={{ fontSize: 18, color, textAlign: 'center' }}>{item.arrow}</span>
-                  <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 10, color: t.inkSoft, letterSpacing: '0.6px' }}>{item.cardinal}</span>
+                  <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, letterSpacing: '0.6px' }}>{item.cardinal}</span>
                   <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                  <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, whiteSpace: 'nowrap' }}>{formatDistance(item.distanceM, units)}</span>
-                  <span style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: 11, color: t.inkSoft, whiteSpace: 'nowrap' }}>{walkTimeMin(item.distanceM, mode)} min</span>
+                  <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, color: t.inkSoft, whiteSpace: 'nowrap' }}>{formatDistance(item.distanceM, units)}</span>
+                  <span style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: 13, color: t.inkSoft, whiteSpace: 'nowrap' }}>{walkTimeMin(item.distanceM, mode)} min</span>
                 </div>
               ))}
             </div>
@@ -1561,7 +1561,7 @@ export default function App() {
                     <span style={{ fontSize: 18, color: t.inkSoft, marginLeft: 2 }}>min</span>
                   </div>
                   {reachRadius !== null && reachRadius > 0 && (
-                    <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: t.inkSoft, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                    <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, color: t.inkSoft, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
                       ≈ {formatDistance(reachRadius, units)} reach
                     </div>
                   )}
@@ -1615,7 +1615,7 @@ export default function App() {
                       <circle cx="8" cy="8" r="2"/>
                       <path d="M 8 1 L 8 3 M 8 13 L 8 15 M 1 8 L 3 8 M 13 8 L 15 8 M 3 3 L 4.5 4.5 M 11.5 11.5 L 13 13 M 3 13 L 4.5 11.5 M 11.5 4.5 L 13 3"/>
                     </svg>
-                    <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 13, color: t.inkSoft }}>Settings</span>
+                    <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: 15, color: t.inkSoft }}>Settings</span>
                   </div>
                   <span style={{ fontSize: 11, color: t.inkSoft, display: 'inline-block', transform: settingsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>⌄</span>
                 </div>
@@ -1624,7 +1624,7 @@ export default function App() {
                   <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {/* Appearance */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, color: t.inkSoft }}>Appearance</span>
+                      <span style={{ fontSize: 14, color: t.inkSoft }}>Appearance</span>
                       <SegControl tok={t}
                         options={[{ value: 'light', label: 'Light' }, { value: 'system', label: 'Auto' }, { value: 'dark', label: 'Dark' }]}
                         value={themeMode}
@@ -1633,7 +1633,7 @@ export default function App() {
                     </div>
                     {/* Units */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, color: t.inkSoft }}>Units</span>
+                      <span style={{ fontSize: 14, color: t.inkSoft }}>Units</span>
                       <SegControl tok={t}
                         options={[{ value: 'metric', label: 'km' }, { value: 'imperial', label: 'mi' }]}
                         value={units}
@@ -1642,7 +1642,7 @@ export default function App() {
                     </div>
                     {/* Live compass */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, color: t.inkSoft }}>Live compass</span>
+                      <span style={{ fontSize: 14, color: t.inkSoft }}>Live compass</span>
                       <SegControl tok={t}
                         options={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
                         value={compassEnabled ? 'on' : 'off'}
@@ -1651,7 +1651,7 @@ export default function App() {
                     </div>
                     {/* Spaces */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, color: t.inkSoft }}>Spaces</span>
+                      <span style={{ fontSize: 14, color: t.inkSoft }}>Spaces</span>
                       <SegControl tok={t}
                         options={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
                         value={showSpaces ? 'on' : 'off'}
@@ -1660,14 +1660,14 @@ export default function App() {
                     </div>
                     {/* Analytics */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, color: t.inkSoft }}>Analytics</span>
+                      <span style={{ fontSize: 14, color: t.inkSoft }}>Analytics</span>
                       <SegControl tok={t}
                         options={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]}
                         value={cookieConsent === 'accepted' ? 'on' : 'off'}
                         onChange={v => v === 'on' ? acceptCookies() : declineCookies()}
                       />
                     </div>
-                    <div style={{ fontSize: 11, color: t.subduedFg, opacity: 0.6, textAlign: 'center' }}>
+                    <div style={{ fontSize: 13, color: t.subduedFg, textAlign: 'center' }}>
                       <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}>Privacy</a>
                       <span style={{ margin: '0 6px' }}>·</span>
                       <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: t.subduedFg, textDecoration: 'underline', cursor: 'pointer' }}>Terms</a>
